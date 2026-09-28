@@ -1,4 +1,4 @@
-"""Download the ONNX checkpoints listed in models/requirements.txt."""
+"""Download the ONNX checkpoints listed in requirements.txt."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 MODELS = ROOT / "models"
-REQUIREMENTS = MODELS / "requirements.txt"
+REQUIREMENTS = ROOT / "requirements.txt"
 
 
 def _entries() -> list[tuple[str, str]]:
