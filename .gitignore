@@ -1,0 +1,4 @@
+# PP-OCRv6 checkpoints and compiled MAX caches.
+# Fetch the ONNX files with: python download_models.py
+models/*.onnx
+models/*.mef/

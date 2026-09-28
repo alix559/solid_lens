@@ -1,0 +1,5 @@
+# PP-OCRv6 medium ONNX checkpoints.
+# Each line is: <filename> <url>
+# python download_models.py
+medium_det.onnx https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_det_onnx/resolve/main/inference.onnx
+medium_rec.onnx https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx/resolve/main/inference.onnx
