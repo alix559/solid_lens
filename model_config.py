@@ -1,8 +1,9 @@
-"""PP-OCRv6 tiny architecture, taken from the PaddleOCR training configs.
+"""PP-OCRv6 medium architecture, taken from the PaddleOCR training configs.
 
-Detection uses PPLCNetV4, a RepLKFPN neck, and the inference DB head.
-Recognition uses the same backbone with height-only downsampling, a
-depthwise guide, and a CTC head. The NRTR head exists only while training.
+Detection uses PPLCNetV4, a RepLKPAN neck with IntraCL, and the inference
+DB head. Recognition uses the same backbone with height-only downsampling,
+then an EncoderWithLightSVTR neck: a 1x7 local convolution plus global
+transformer blocks, and a CTC head. The NRTR head exists only while training.
 """
 
 from __future__ import annotations
@@ -21,63 +22,76 @@ Block = tuple[int, int, int, int | tuple[int, int], bool]
 
 
 DET_BLOCKS: dict[str, list[Block]] = {
-    "s1": [(3, 32, 32, 1, True), (3, 32, 32, 1, False)],
+    "s1": [(3, 128, 128, 1, True), (3, 128, 128, 1, False)],
     "s2": [
-        (3, 32, 48, 2, False),
-        (3, 48, 48, 1, True),
-        (3, 48, 48, 1, False),
+        (3, 128, 256, 2, False),
+        (3, 256, 256, 1, True),
+        (3, 256, 256, 1, False),
     ],
     "s3": [
-        (3, 48, 64, 2, False),
-        (3, 64, 64, 1, True),
-        (3, 64, 64, 1, False),
-        (3, 64, 64, 1, True),
-        (3, 64, 64, 1, False),
+        (3, 256, 512, 2, False),
+        (3, 512, 512, 1, True),
+        (3, 512, 512, 1, False),
+        (3, 512, 512, 1, True),
+        (3, 512, 512, 1, False),
     ],
     "s4": [
-        (3, 64, 160, 2, False),
-        (3, 160, 160, 1, True),
-        (3, 160, 160, 1, False),
+        (3, 512, 896, 2, False),
+        (3, 896, 896, 1, True),
+        (3, 896, 896, 1, False),
     ],
 }
 
 REC_BLOCKS: dict[str, list[Block]] = {
-    "b2": [(3, 48, 48, 1, True)],
-    "b3": [(3, 48, 48, 1, False)],
+    "b2": [(3, 128, 128, 1, True)],
+    "b3": [
+        (3, 128, 256, 1, False),
+        (3, 256, 256, 1, False),
+        (3, 256, 256, 1, True),
+    ],
     "b4": [
-        (3, 48, 96, (2, 1), False),
-        (3, 96, 96, 1, True),
-        (3, 96, 96, 1, False),
+        (3, 256, 512, (2, 1), False),
+        (3, 512, 512, 1, True),
+        (3, 512, 512, 1, False),
+        (3, 512, 512, 1, True),
+        (3, 512, 512, 1, False),
+        (3, 512, 512, 1, True),
+        (3, 512, 512, 1, False),
     ],
     "b5": [
-        (3, 96, 160, (2, 1), False),
-        (3, 160, 160, 1, True),
-        (3, 160, 160, 1, False),
-        (3, 160, 160, 1, False),
+        (3, 512, 768, (2, 1), False),
+        (3, 768, 768, 1, True),
+        (3, 768, 768, 1, False),
     ],
 }
 
 
 @dataclass(frozen=True)
 class DetectorConfig:
-    stem_mid: int = 16
-    stem_out: int = 32
-    fpn_channels: int = 64
-    replk_kernel: int = 5
-    head_channels: int = 16
-    # Backbone SE uses Paddle's Hardsigmoid slope. The neck uses 1/5.
+    stem_mid: int = 64
+    stem_out: int = 128
+    # RepLKPAN projects every level to this width, then to width // 4.
+    fpn_channels: int = 256
+    replk_kernel: int = 9
+    head_channels: int = 64
     se_alpha: float = 1.0 / 6.0
-    neck_alpha: float = 0.2
 
 
 @dataclass(frozen=True)
 class RecognizerConfig:
-    stem_mid: int = 24
-    stem_out: int = 48
-    guide_channels: int = 160
-    mid_channels: int = 80
-    num_classes: int = 6906
+    stem_mid: int = 64
+    stem_out: int = 128
+    backbone_channels: int = 768
+    svtr_dim: int = 192
+    svtr_depth: int = 2
+    svtr_heads: int = 8
+    mlp_ratio: float = 4.0
+    local_kernel: int = 7
+    num_classes: int = 18710
     image_height: int = 48
     image_width: int = 320
     se_alpha: float = 1.0 / 6.0
+    # Conv batch-norm and the transformer block norms both use 1e-5.
+    # The norm after the last block uses 1e-6.
     bn_eps: float = 1e-5
+    final_norm_eps: float = 1e-6

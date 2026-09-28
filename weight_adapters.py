@@ -1,9 +1,9 @@
 """Map an exported PP-OCRv6 ONNX checkpoint onto MAX module weights.
 
 Parameter order follows the module tree, which is the same order the
-Paddle exporter emitted Conv, ConvTranspose, BatchNormalization, and
-MatMul nodes. Paddle linear weights are stored as (in, out); MAX linear
-weights are (out, in).
+Paddle exporter emitted Conv, ConvTranspose, BatchNormalization, MatMul,
+and the decomposed LayerNorm scale and bias. Paddle linear weights are
+stored as (in, out); MAX linear weights are (out, in).
 """
 
 from __future__ import annotations
@@ -19,6 +19,17 @@ def _skip_identity(nodes: list[Node], index: int) -> int:
     while index < len(nodes) and nodes[index].op_type == "Identity":
         index += 1
     return index
+
+
+def _vector(graph: Graph, node: Node) -> np.ndarray | None:
+    """A 1-D learned vector on this node, such as a LayerNorm scale or bias."""
+    for name in node.inputs:
+        if name not in graph.initializers:
+            continue
+        array = np.asarray(graph.initializers[name], dtype=np.float32)
+        if array.ndim == 1 and array.size > 1:
+            return np.ascontiguousarray(array.reshape(-1))
+    return None
 
 
 def _bias_array(graph: Graph, nodes: list[Node], index: int) -> np.ndarray | None:
@@ -54,13 +65,26 @@ def checkpoint_arrays(path: Path) -> list[np.ndarray]:
                 arrays.append(
                     np.ascontiguousarray(np.asarray(graph.initializers[name], dtype=np.float32).reshape(-1))
                 )
-        elif node.op_type == "MatMul":
+        elif node.op_type == "MatMul" and node.inputs[1] in graph.initializers:
             weight = np.asarray(graph.initializers[node.inputs[1]], dtype=np.float32)
             arrays.append(np.ascontiguousarray(weight.T))
             bias = _bias_array(graph, nodes, index)
             if bias is None:
                 raise ValueError(f"{node.name} is missing a bias")
             arrays.append(bias)
+        elif node.op_type == "Mul":
+            # Exported LayerNorm is mean/var, then scale (Mul) and bias (Add).
+            gamma = _vector(graph, node)
+            if gamma is None:
+                continue
+            nxt = _skip_identity(nodes, index + 1)
+            if nxt >= len(nodes) or nodes[nxt].op_type != "Add":
+                raise ValueError(f"{node.name} scale is missing a LayerNorm bias")
+            beta = _vector(graph, nodes[nxt])
+            if beta is None:
+                raise ValueError(f"{node.name} scale is missing a LayerNorm bias")
+            arrays.append(gamma)
+            arrays.append(beta)
     return arrays
 
 

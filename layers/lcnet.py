@@ -1,9 +1,9 @@
-"""PPLCNetV4 blocks shared by the tiny detector and recognizer.
+"""PPLCNetV4 blocks for the medium detector and recognizer.
 
 The exported checkpoints are inference graphs. RepDWConv has already been
-fused into one depthwise convolution, and detection batch-norm is folded
-into the convolution bias. Recognition still has batch-norm on the stem
-and on the CTC guide.
+fused into one depthwise convolution, and batch-norm on the backbone is
+folded into the convolution bias. The recognition neck keeps its own
+batch-norm.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from max.graph import TensorValue, Weight, ops
 from max.nn.layer import Module
 from max.nn.sequential import Sequential
 
-from layers.activations import gelu, hardswish, hardsigmoid, relu
+from layers.activations import gelu, hardsigmoid, relu
 from layers.conv import conv2d, nchw_to_nhwc, nhwc_to_nchw, same_padding
 from model_config import DEVICE, DTYPE, Block
 
@@ -123,21 +123,6 @@ class DetStem(Module):
         pooled = _max_pool_same_upper(x)
         merged = ops.concat([pooled, branch], axis=1)
         return relu(self.stem4(relu(self.stem3(merged))))
-
-
-class RecStem(Module):
-    """Two stride-2 convolutions. GELU sits between them."""
-
-    def __init__(self, mid: int, out: int, eps: float) -> None:
-        super().__init__()
-        self.conv1 = conv2d(3, mid, 3, stride=2, padding=1, bias=False)
-        self.bn1 = BatchNorm(mid, eps)
-        self.conv2 = conv2d(mid, out, 3, stride=2, padding=1, bias=False)
-        self.bn2 = BatchNorm(out, eps)
-
-    def __call__(self, x: TensorValue) -> TensorValue:
-        x = gelu(self.bn1(self.conv1(x)))
-        return self.bn2(self.conv2(x))
 
 
 def _max_pool_same_upper(x: TensorValue) -> TensorValue:

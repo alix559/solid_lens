@@ -1,8 +1,8 @@
-"""PP-OCRv6 tiny OCR on the MAX engine.
+"""PP-OCRv6 medium OCR on the MAX engine.
 
-Detection and recognition are PP-OCRv6 tiny, written as MAX modules.
-The official weights are loaded from the ONNX checkpoints. Box grouping
-and CTC decode stay in Python.
+Detection and recognition are written as MAX modules. The official weights
+are loaded from the ONNX checkpoints. Box grouping and CTC decode stay in
+Python. Recognition uses the LightSVTR transformer neck.
 """
 
 from __future__ import annotations
@@ -20,8 +20,11 @@ DET_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
 DET_STD = np.array([0.229, 0.224, 0.225], np.float32)
 
 
-def load_charset(path: Path) -> list[str]:
-    return path.read_text().splitlines()
+def load_charset(path: Path, *, add_space: bool = False) -> list[str]:
+    chars = path.read_text().splitlines()
+    if add_space:
+        chars.append(" ")
+    return chars
 
 
 def read_bmp(path: Path) -> np.ndarray:
@@ -167,10 +170,19 @@ def boxes_from_map(
     return boxes
 
 
-def recognize_crop(model, image_rgb: np.ndarray, charset: list[str]) -> str:
+def _ctc_decode(ids: list[int], charset: list[str]) -> str:
+    text = []
+    previous = -1
+    for index in ids:
+        if index != 0 and index != previous:
+            text.append(charset[index - 1])
+        previous = index
+    return "".join(text).strip()
+
+
+def _recognize_ids(model, image_rgb: np.ndarray) -> list[int]:
+    """Run one crop that already fits the 320-wide recognizer."""
     height, width = image_rgb.shape[:2]
-    if height < 2 or width < 2:
-        return ""
     resized_w = int(np.ceil(48 * width / height))
     resized_w = max(8, min(320, resized_w))
     resized = resize_hwc(image_rgb, 48, resized_w).astype(np.float32)
@@ -180,14 +192,164 @@ def recognize_crop(model, image_rgb: np.ndarray, charset: list[str]) -> str:
     tensor[0, :, :, :resized_w] = normalized
     tensor = np.ascontiguousarray(tensor)
     probs = model.execute(tensor)[0].to_numpy()[0]
-    ids = probs.argmax(axis=-1)
-    text = []
-    previous = -1
-    for index in ids.tolist():
-        if index != 0 and index != previous:
-            text.append(charset[index - 1])
-        previous = index
-    return "".join(text).strip()
+    # The recognizer downsamples width by 8, so padding past resized_w is blank.
+    valid = max(1, resized_w // 8)
+    return [int(index) for index in probs.argmax(axis=-1)[:valid]]
+
+
+def recognize_crop(model, image_rgb: np.ndarray, charset: list[str]) -> str:
+    height, width = image_rgb.shape[:2]
+    if height < 2 or width < 2:
+        return ""
+    fitted = int(np.ceil(48 * width / height))
+    if fitted <= 320:
+        return _ctc_decode(_recognize_ids(model, image_rgb), charset)
+    # A long line squashed into 320 columns loses characters. Slide a window
+    # whose kept timesteps abut, and drop the edges where the crop has no context.
+    drop = 5
+    stride_net = (40 - 2 * drop) * 8
+    window = max(8, int(round(320 * height / 48)))
+    stride = max(4, int(round(stride_net * height / 48)))
+    merged: list[int] = []
+    x = 0
+    first = True
+    while x < width:
+        piece = image_rgb[:, x : min(width, x + window)]
+        seq = _recognize_ids(model, piece)
+        last = x + window >= width
+        if first and last:
+            use = seq
+        elif first:
+            use = seq[:-drop] if len(seq) > drop else seq
+        elif last:
+            use = seq[drop:] if len(seq) > drop else seq
+        elif len(seq) > 2 * drop:
+            use = seq[drop:-drop]
+        else:
+            use = seq
+        merged.extend(use)
+        if last:
+            break
+        x += stride
+        first = False
+    return _ctc_decode(merged, charset)
+
+
+def _map_boxes(
+    prob: np.ndarray,
+    scale: float,
+    pad_x: int,
+    pad_y: int,
+    width: int,
+    height: int,
+) -> list[tuple[int, int, int, int, float]]:
+    found = boxes_from_map(prob, thresh=0.2, box_thresh=0.45, unclip_ratio=1.4)
+    mapped = []
+    for x0, y0, x1, y1, score in found:
+        left = int(np.clip((x0 - pad_x) / scale, 0, width - 1))
+        top = int(np.clip((y0 - pad_y) / scale, 0, height - 1))
+        right = int(np.clip((x1 - pad_x) / scale, left + 1, width))
+        bottom = int(np.clip((y1 - pad_y) / scale, top + 1, height))
+        mapped.append((left, top, right, bottom, score))
+    return mapped
+
+
+def _tile_starts(length: int, tile: int, step: int) -> list[int]:
+    if length <= tile:
+        return [0]
+    starts = list(range(0, length - tile + 1, step))
+    last = length - tile
+    if starts[-1] != last:
+        starts.append(last)
+    return starts
+
+
+def _box_area(box: tuple[int, int, int, int, float]) -> int:
+    return max(0, box[2] - box[0]) * max(0, box[3] - box[1])
+
+
+def _intersection(a: tuple[int, int, int, int, float], b: tuple[int, int, int, int, float]) -> int:
+    x0 = max(a[0], b[0])
+    y0 = max(a[1], b[1])
+    x1 = min(a[2], b[2])
+    y1 = min(a[3], b[3])
+    if x1 <= x0 or y1 <= y0:
+        return 0
+    return (x1 - x0) * (y1 - y0)
+
+
+def _same_box(a: tuple[int, int, int, int, float], b: tuple[int, int, int, int, float]) -> bool:
+    inter = _intersection(a, b)
+    if inter == 0:
+        return False
+    area_a = _box_area(a)
+    area_b = _box_area(b)
+    union = area_a + area_b - inter
+    if union and inter / union > 0.3:
+        return True
+    smaller = min(area_a, area_b)
+    return bool(smaller) and inter / smaller > 0.6
+
+
+def _nms(boxes: list[tuple[int, int, int, int, float]]) -> list[tuple[int, int, int, int, float]]:
+    ordered = sorted(boxes, key=lambda box: box[4], reverse=True)
+    kept: list[tuple[int, int, int, int, float]] = []
+    for box in ordered:
+        if any(_same_box(box, other) for other in kept):
+            continue
+        kept.append(box)
+    return kept
+
+
+def detect_boxes(
+    image_rgb: np.ndarray,
+    det_model,
+    size: int,
+) -> list[tuple[int, int, int, int, float]]:
+    """Boxes in original pixels.
+
+    The compiled detector is a square. Letterboxing a whole page into it
+    shrinks table cells until digits and short words disappear, so a large
+    page is also scanned in overlapping tiles at twice the network size.
+    """
+    height, width = image_rgb.shape[:2]
+    tensor, scale, pad_x, pad_y = det_input(image_rgb, size)
+    prob = det_model.execute(tensor)[0].to_numpy()[0, 0]
+    boxes = _map_boxes(prob, scale, pad_x, pad_y, width, height)
+
+    tile = size * 2
+    if max(height, width) <= tile:
+        boxes.sort(key=lambda box: (box[1], box[0]))
+        return boxes
+
+    overlap = size // 2 + 40
+    step = tile - overlap
+    margin = 8
+    extra: list[tuple[int, int, int, int, float]] = []
+    ys = _tile_starts(height, tile, step)
+    xs = _tile_starts(width, tile, step)
+    print(f"scanning {len(ys) * len(xs)} tiles", file=sys.stderr)
+    for top in ys:
+        for left in xs:
+            crop = image_rgb[top : top + tile, left : left + tile]
+            crop_h, crop_w = crop.shape[:2]
+            tensor, scale, pad_x, pad_y = det_input(crop, size)
+            prob = det_model.execute(tensor)[0].to_numpy()[0, 0]
+            at_left = left == 0
+            at_top = top == 0
+            at_right = left + crop_w >= width
+            at_bottom = top + crop_h >= height
+            for box in _map_boxes(prob, scale, pad_x, pad_y, crop_w, crop_h):
+                x0, y0, x1, y1, score = box
+                if (not at_left and x0 <= margin) or (not at_right and x1 >= crop_w - margin):
+                    continue
+                if (not at_top and y0 <= margin) or (not at_bottom and y1 >= crop_h - margin):
+                    continue
+                extra.append((x0 + left, y0 + top, x1 + left, y1 + top, score))
+    extra = _nms(extra)
+    boxes.extend(box for box in extra if all(not _same_box(box, kept) for kept in list(boxes)))
+    boxes.sort(key=lambda box: (box[1], box[0]))
+    return boxes
 
 
 def read_page(
@@ -197,16 +359,8 @@ def read_page(
     charset: list[str],
     size: int,
 ) -> list[tuple[str, float, int, int, int, int]]:
-    tensor, scale, pad_x, pad_y = det_input(image_rgb, size)
-    prob = det_model.execute(tensor)[0].to_numpy()[0, 0]
-    found = boxes_from_map(prob, thresh=0.2, box_thresh=0.4, unclip_ratio=1.4)
     lines = []
-    height, width = image_rgb.shape[:2]
-    for x0, y0, x1, y1, score in found:
-        left = int(np.clip((x0 - pad_x) / scale, 0, width - 1))
-        top = int(np.clip((y0 - pad_y) / scale, 0, height - 1))
-        right = int(np.clip((x1 - pad_x) / scale, left + 1, width))
-        bottom = int(np.clip((y1 - pad_y) / scale, top + 1, height))
+    for left, top, right, bottom, score in detect_boxes(image_rgb, det_model, size):
         text = recognize_crop(rec_model, image_rgb[top:bottom, left:right], charset)
         if text:
             lines.append((text, score, left, top, right, bottom))
@@ -266,7 +420,7 @@ def save_rgb(path: Path, image_rgb: np.ndarray) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run PP-OCRv6 tiny OCR with MAX")
+    parser = argparse.ArgumentParser(description="Run PP-OCRv6 medium OCR with MAX")
     parser.add_argument("image", type=Path)
     parser.add_argument("--size", type=int, default=640, help="square detector input, a multiple of 32")
     parser.add_argument("--output", type=Path, help="image with boxes drawn; defaults to <image>.boxes.png")
@@ -274,16 +428,16 @@ def main() -> None:
     if args.size % 32 != 0:
         raise SystemExit("--size must be a multiple of 32")
     image = load_image(args.image)
-    charset = load_charset(ROOT / "charset.txt")
-    det_cache = ROOT / "models" / f"native_det_{args.size}.mef"
-    rec_cache = ROOT / "models" / "native_rec_48x320.mef"
+    charset = load_charset(ROOT / "models" / "ppocrv6_dict.txt", add_space=True)
+    det_cache = ROOT / "models" / f"native_medium_det_{args.size}.mef"
+    rec_cache = ROOT / "models" / "native_medium_rec_48x320.mef"
     print(
-        "loading cached detector" if any(det_cache.glob("*.mef")) else "compiling PP-OCRv6 tiny detector",
+        "loading cached detector" if any(det_cache.glob("*.mef")) else "compiling PP-OCRv6 medium detector",
         file=sys.stderr,
     )
     detector = compile_detector(args.size, cache_dir=det_cache)
     print(
-        "loading cached recognizer" if any(rec_cache.glob("*.mef")) else "compiling PP-OCRv6 tiny recognizer",
+        "loading cached recognizer" if any(rec_cache.glob("*.mef")) else "compiling PP-OCRv6 medium recognizer",
         file=sys.stderr,
     )
     recognizer = compile_recognizer(cache_dir=rec_cache)

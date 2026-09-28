@@ -1,4 +1,4 @@
-"""Compile a PP-OCRv6 tiny module and bind its checkpoint."""
+"""Compile the PP-OCRv6 medium modules and bind their checkpoints."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from max.driver import CPU
 from max.engine import InferenceSession
 from max.graph import Graph, TensorType
 
-from detector import PPOCRV6TinyDetector
+from detector import PPOCRV6Detector
 from model_config import DEVICE, DTYPE, RecognizerConfig
-from recognizer import PPOCRV6TinyRecognizer
+from recognizer import PPOCRV6Recognizer
 from weight_adapters import load_checkpoint
 
 ROOT = Path(__file__).resolve().parent
@@ -36,23 +36,23 @@ def _compile(module, shape: list[int], name: str, cache_dir: Path | None):
 
 
 def compile_detector(size: int, cache_dir: Path | None = None):
-    module = PPOCRV6TinyDetector()
-    load_checkpoint(module, ROOT / "models" / "tiny_det.onnx")
+    module = PPOCRV6Detector()
+    load_checkpoint(module, ROOT / "models" / "medium_det.onnx")
     return _compile(
         module,
         [1, 3, size, size],
-        f"ppocrv6_tiny_det_{size}",
+        f"ppocrv6_medium_det_{size}",
         cache_dir,
     )
 
 
 def compile_recognizer(cache_dir: Path | None = None):
     config = RecognizerConfig()
-    module = PPOCRV6TinyRecognizer(config)
-    load_checkpoint(module, ROOT / "models" / "tiny_rec.onnx")
+    module = PPOCRV6Recognizer(config)
+    load_checkpoint(module, ROOT / "models" / "medium_rec.onnx")
     return _compile(
         module,
         [1, 3, config.image_height, config.image_width],
-        "ppocrv6_tiny_rec",
+        "ppocrv6_medium_rec",
         cache_dir,
     )

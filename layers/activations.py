@@ -14,10 +14,6 @@ def hardsigmoid(x: TensorValue, alpha: float, beta: float = 0.5) -> TensorValue:
     return ops.min(one, ops.max(zero, x * np.float32(alpha) + np.float32(beta)))
 
 
-def hardswish(x: TensorValue, alpha: float) -> TensorValue:
-    return x * hardsigmoid(x, alpha)
-
-
 def gelu(x: TensorValue) -> TensorValue:
     return ops.gelu(x)
 
