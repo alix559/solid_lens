@@ -1,3 +1,6 @@
 # Local checkpoints, caches, dictionaries, and sample images.
 # Fetch the ONNX files with: python download_models.py
 models/
+# pixi environments
+.pixi/*
+!.pixi/config.toml

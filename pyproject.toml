@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solid_lens"
+dynamic = ["version"]
+description = "an hybrid ocr engine inspired by paddle ocr v6 architecture"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "alix559", email = "alex.jacob@coleintl.com"}]
+keywords = ['nbdev']
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/alix559/solid_lens"
+Documentation = "https://alix559.github.io/solid_lens/"
+
+[project.entry-points.nbdev]
+solid_lens = "solid_lens._modidx:d"
+
+[tool.setuptools.dynamic]
+version = {attr = "solid_lens.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["solid_lens"]
+
+[tool.nbdev]

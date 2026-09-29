@@ -1,0 +1,14 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "solid_lens"
+  site-url: "https://alix559.github.io/solid_lens"
+  description: "an hybrid ocr engine inspired by paddle ocr v6 architecture"
+  repo-branch: main
+  repo-url: "https://github.com/alix559/solid_lens"
+
+format-links:
+  - html
+  - format: commonmark
+    text: Markdown

@@ -35,13 +35,32 @@ def _compile(module, shape: list[int], name: str, cache_dir: Path | None):
     return _session(cache_dir).load(graph, weights_registry=weights)
 
 
-def compile_detector(size: int, cache_dir: Path | None = None):
+def compile_detector(
+    size: int | None = None,
+    cache_dir: Path | None = None,
+    *,
+    height: int | None = None,
+    width: int | None = None,
+):
+    """Compile the detector for one input shape.
+
+    Pass `size` for a square, or `height` and `width` for the rectangular
+    shape PaddleOCR's det resize produces. Both sides must be multiples of 32.
+    """
+    if height is None and width is None:
+        if size is None:
+            raise ValueError("pass size, or height and width")
+        height = width = size
+    elif height is None or width is None:
+        raise ValueError("height and width are set together")
+    if height % 32 or width % 32:
+        raise ValueError("detector sides must be multiples of 32")
     module = PPOCRV6Detector()
     load_checkpoint(module, ROOT / "models" / "medium_det.onnx")
     return _compile(
         module,
-        [1, 3, size, size],
-        f"ppocrv6_medium_det_{size}",
+        [1, 3, height, width],
+        f"ppocrv6_medium_det_{height}x{width}",
         cache_dir,
     )
 
