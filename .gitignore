@@ -1,6 +1,12 @@
 # Local checkpoints, caches, dictionaries, and sample images.
-# Fetch the ONNX files with: python download_models.py
+# Fetch the ONNX files with: python -m solid_lens.download
 models/
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# Python and notebook clutter
+__pycache__/
+*.py[cod]
+nbs/.ipynb_checkpoints/
+.ipynb_checkpoints/

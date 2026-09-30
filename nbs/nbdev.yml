@@ -4,7 +4,7 @@ project:
 website:
   title: "solid_lens"
   site-url: "https://alix559.github.io/solid_lens"
-  description: "an hybrid ocr engine inspired by paddle ocr v6 architecture"
+  description: "A hybrid OCR engine inspired by the PaddleOCR v6 architecture"
   repo-branch: main
   repo-url: "https://github.com/alix559/solid_lens"
 
