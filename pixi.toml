@@ -22,3 +22,6 @@ ipykernel = ">=7.1.0,<8"
 python-fasthtml = ">=0.14.13,<0.15"
 pyclipper = ">=1.4.0,<2"
 py-opencv = ">=5.0.0,<6"
+
+[pypi-dependencies]
+solid_lens = { path = ".", editable = true }

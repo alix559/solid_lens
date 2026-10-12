@@ -1,0 +1,522 @@
+[
+  {
+    "objectID": "lcnet.html",
+    "href": "lcnet.html",
+    "title": "lcnet",
+    "section": "",
+    "text": "The exported checkpoints are inference graphs. RepDWConv has already been fused into one depthwise convolution, and batch-norm on the backbone is folded into the convolution bias. The recognition neck keeps its own batch-norm, which is why BatchNorm lives next to the backbone that no longer uses it.\nfrom fastcore.test import test_eq\n\ntest_eq(_unit_stride(1), True)\ntest_eq(_unit_stride((1, 1)), True)\ntest_eq(_unit_stride((2, 1)), False)\n_unit_stride((2, 1))\n\nFalse\nA residual is legal only when the stride is 1 in both directions and the channel count does not change. The recognizer’s (2, 1) blocks are not residuals.",
+    "crumbs": [
+      "lcnet"
+    ]
+  },
+  {
+    "objectID": "lcnet.html#batch-norm",
+    "href": "lcnet.html#batch-norm",
+    "title": "lcnet",
+    "section": "Batch-norm",
+    "text": "Batch-norm\n\n\nsource\n\nBatchNorm\ndef BatchNorm(\n    channels:int, eps:float\n)-&gt;None:\nInference batch-norm. Running statistics are weights.\n\n\nThis is inference batch-norm: the running statistics are weights, not buffers that update. LightSVTR uses it. The backbone does not, because those batch-norms were folded into the convolution bias before export.",
+    "crumbs": [
+      "lcnet"
+    ]
+  },
+  {
+    "objectID": "lcnet.html#squeeze-excite",
+    "href": "lcnet.html#squeeze-excite",
+    "title": "lcnet",
+    "section": "Squeeze-excite",
+    "text": "Squeeze-excite\n\n\nsource\n\nSqueezeExcite\ndef SqueezeExcite(\n    channels:int, alpha:float, *, reduction:int=4, residual:bool=False\n)-&gt;None:\nGlobal pool, 1x1 bottleneck, hardsigmoid. Optional residual adds the gated map.",
+    "crumbs": [
+      "lcnet"
+    ]
+  },
+  {
+    "objectID": "lcnet.html#the-block",
+    "href": "lcnet.html#the-block",
+    "title": "lcnet",
+    "section": "The block",
+    "text": "The block\n\n\nsource\n\nLCNetV4Block\ndef LCNetV4Block(\n    spec:Block, se_alpha:float, *, bias:bool\n)-&gt;None:\nToken mixer (depthwise conv, optional SE) plus a 2x channel mixer.\n\n\nThe residual is added to the depthwise output, not to the block input. The channel mixer is an expansion by 2, a GELU, and a projection. Submodule order here is the checkpoint order: depthwise, optional SE, expand, compress.\n\n\nsource\n\nstage\ndef stage(\n    blocks:list[Block], se_alpha:float, *, bias:bool\n)-&gt;Sequential:",
+    "crumbs": [
+      "lcnet"
+    ]
+  },
+  {
+    "objectID": "lcnet.html#stem",
+    "href": "lcnet.html#stem",
+    "title": "lcnet",
+    "section": "Stem",
+    "text": "Stem\n\n\nsource\n\nDetStem\ndef DetStem(\n    mid:int, out:int\n)-&gt;None:\nMulti-branch stem. Total stride is 4.\n\n\nThe stem’s total stride is 4: one stride-2 convolution, then a stride-2 convolution after the branches merge. The 2×2 branch is padded (0, 1, 0, 1), which is the asymmetric SAME the exporter used. The other branch is a 2×2 max pool with the same asymmetry. Both recognizer and detector use this stem.",
+    "crumbs": [
+      "lcnet"
+    ]
+  },
+  {
+    "objectID": "weights.html",
+    "href": "weights.html",
+    "title": "weights",
+    "section": "",
+    "text": "Parameter order follows the module tree, which is the order the Paddle exporter emitted Conv, ConvTranspose, BatchNormalization, MatMul, and the decomposed LayerNorm scale and bias. Paddle linear weights are stored as (in, out). MAX linear weights are (out, in).\nA bias is the next Add, skipping Identity nodes, whose right-hand side is a learned vector. A scalar add is not a bias. LayerNorm scale is the same kind of vector sitting on a Mul, and the bias is the Add that follows it.\n\n\nsource\n\narrays_from_graph\ndef arrays_from_graph(\n    graph:Graph\n)-&gt;list[np.ndarray]:\nLearned tensors in module state-dict order.\n\n\nConv weights stay in the checkpoint’s layout. conv2d was built with permute=True so that layout is already OIHW. MatMul is the exception: the stored matrix is (in, out) and MAX wants (out, in), so it is transposed here.\n\nimport numpy as np\nfrom fastcore.test import test_eq\nfrom solid_lens.onnx import Graph, Node\n\nweight = np.arange(6, dtype=np.float32).reshape(2, 3)\ngraph = Graph()\ngraph.initializers[\"w\"] = weight\ngraph.initializers[\"b\"] = np.array([10, 20, 30], np.float32)\nmatmul = Node()\nmatmul.op_type = \"MatMul\"\nmatmul.name = \"fc\"\nmatmul.inputs = [\"x\", \"w\"]\nadd = Node()\nadd.op_type = \"Add\"\nadd.inputs = [\"y\", \"b\"]\ngraph.nodes = [matmul, add]\narrays = arrays_from_graph(graph)\ntest_eq(arrays[0].tolist(), weight.T.tolist())\ntest_eq(arrays[1].tolist(), [10.0, 20.0, 30.0])\narrays[0]\n\narray([[0., 3.],\n       [1., 4.],\n       [2., 5.]], dtype=float32)\n\n\n\n\nsource\n\ncheckpoint_arrays\ndef checkpoint_arrays(\n    path:Path\n)-&gt;list[np.ndarray]:\nLearned tensors in an ONNX checkpoint, in module state-dict order.\n\n\nMAX walks layer_weights and then sublayers. Defining a submodule later in __init__ puts its tensors later. That is the same order as the exporter, which is why the layer notebooks keep the attribute order they do.\n\n\nsource\n\nload_checkpoint\ndef load_checkpoint(\n    module, path:Path\n)-&gt;None:\n\n\nA count mismatch and a shape mismatch are both errors. There is no partial load. If a new layer is inserted in the wrong place, this is the function that says so.",
+    "crumbs": [
+      "weights"
+    ]
+  },
+  {
+    "objectID": "pan.html",
+    "href": "pan.html",
+    "title": "RepLKPAN",
+    "section": "",
+    "text": "The checkpoint is the reparameterized inference graph. Each dilated large-kernel branch is one depthwise 9×9 plus a pointwise mix, and the IntraCL batch-norm is folded into the closing 1×1. Submodules are stored in the order the exporter wrote them. Changing that order will not fail at construction. It fails when a checkpoint tensor has the wrong shape.\nsource\n\nLargeKernel\ndef LargeKernel(\n    in_channels:int, out_channels:int, kernel:int\n)-&gt;None:\nDepthwise convolution followed by a pointwise mix.",
+    "crumbs": [
+      "RepLKPAN"
+    ]
+  },
+  {
+    "objectID": "pan.html#intracl",
+    "href": "pan.html#intracl",
+    "title": "RepLKPAN",
+    "section": "IntraCL",
+    "text": "IntraCL\n\n\nsource\n\nIntraCL\ndef IntraCL(\n    channels:int, reduce_factor:int=2\n)-&gt;None:\nStrip and square context at 7, 5, and 3, added back onto the input.\n\n\nAt each scale the square kernel and the two strips (vertical, then horizontal) are added, then the next smaller scale reads that sum. The projection is a residual on the block input. Attribute order is the checkpoint order, including the 7-then-5-then-3 groups.",
+    "crumbs": [
+      "RepLKPAN"
+    ]
+  },
+  {
+    "objectID": "pan.html#the-neck",
+    "href": "pan.html#the-neck",
+    "title": "RepLKPAN",
+    "section": "The neck",
+    "text": "The neck\n\n\nsource\n\nRepLKPAN\ndef RepLKPAN(\n    in_channels:tuple[int, int, int, int], out_channels:int, kernel:int\n)-&gt;None:\nTop-down fusion, a bottom-up path, then IntraCL. Four levels are concatenated at the finest resolution.\n\n\nTop-down first: the coarsest lateral is upsampled onto the next finer map. Then a bottom-up path downsamples the fine mix back onto the coarse ones. IntraCL runs on each level, and the four maps are concatenated at the finest resolution. The output width is fpn_channels, because each level was projected to fpn_channels // 4.",
+    "crumbs": [
+      "RepLKPAN"
+    ]
+  },
+  {
+    "objectID": "ocr.html",
+    "href": "ocr.html",
+    "title": "ocr",
+    "section": "",
+    "text": "Pages are resized and boxes are read off the detector map the same way as PaddleOCR: keep the aspect ratio, then take DB contours, a minimum-area rectangle, and an unclip. Recognition is CTC over the LightSVTR sequence. Compilation stays inside main, so the geometry below can be read on its own.",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#detector-size",
+    "href": "ocr.html#detector-size",
+    "title": "ocr",
+    "section": "Detector size",
+    "text": "Detector size\nThese are the PP-OCRv6 medium overrides from PaddleOCR’s OCR pipeline. The checkpoint yaml is looser (0.2 / 0.45 / 1.4). The pipeline that produces the boxes uses the numbers below.\n\n\nsource\n\ndetection_hw\ndef detection_hw(\n    height:int, # Page height, in pixels\n    width:int, # Page width, in pixels\n    limit_side_len:int=64, # Side the limit type compares against\n    limit_type:str='min', # `min`, `max`, or `resize_long`\n    max_side_limit:int=4000\n)-&gt;tuple[int, int]:\nDetector height and width. Same rule as PaddleOCR DetResizeForTest type 0.\n\n\nlimit_type is min and limit_side_len is 64, so a page whose short side is already at least 64 is not shrunk. Both sides are then rounded to a multiple of 32, and nothing is allowed below 32. round is bankers’ rounding, so a half step lands on the even multiple.\n\nfrom fastcore.test import test_eq\n\ntest_eq(detection_hw(100, 200), (96, 192))\ntest_eq(detection_hw(40, 80), (64, 128))\ntest_eq(detection_hw(100, 400, limit_side_len=64, limit_type=\"resize_long\"), (32, 64))\ndetection_hw(100, 200)\n\n(96, 192)",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#ctc",
+    "href": "ocr.html#ctc",
+    "title": "ocr",
+    "section": "CTC",
+    "text": "CTC\nClass 0 is the blank. Repeated labels collapse, and blanks separate the repeats that should survive.\n\nfrom fastcore.test import test_eq\n\ntest_eq(_ctc_decode([0, 1, 1, 0, 2, 2, 3], [\"a\", \"b\", \"c\"]), \"abc\")\ntest_eq(_ctc_decode([1, 1], [\"a\"]), \"a\")\n_ctc_decode([0, 1, 0, 1], [\"a\", \"b\"])\n\n'aa'",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#images",
+    "href": "ocr.html#images",
+    "title": "ocr",
+    "section": "Images",
+    "text": "Images\nDetector normalization is ImageNet mean and std on a BGR image. The recognizer uses a different scale, (x / 255 - 0.5) / 0.5, applied later per crop.\n\n\nsource\n\nload_charset\ndef load_charset(\n    path:Path, *, add_space:bool=False\n)-&gt;list[str]:\n\n\n\n\nsource\n\nload_image\ndef load_image(\n    path:Path\n)-&gt;np.ndarray:\nReturn an RGB uint8 image.\n\n\n\n\nsource\n\nresize_hwc\ndef resize_hwc(\n    image:np.ndarray, out_h:int, out_w:int\n)-&gt;np.ndarray:\n\n\nThis is bilinear resampling with the pixel center at the half coordinate, which is what the recognizer crops use. An image that is already the requested size is returned unchanged.\n\nimport numpy as np\nfrom fastcore.test import test_eq\n\nimage = np.arange(12, dtype=np.uint8).reshape(3, 4, 1).repeat(3, axis=2)\nsame = resize_hwc(image, 3, 4)\ntest_eq(same.shape, image.shape)\ntest_eq(bool(same is image), True)\nsmall = resize_hwc(image, 1, 1)\ntest_eq(small.shape, (1, 1, 3))\nsmall\n\narray([[[5, 5, 5]]], dtype=uint8)\n\n\n\n\nsource\n\ndet_input\ndef det_input(\n    image_rgb:np.ndarray, out_h:int, out_w:int\n)-&gt;np.ndarray:\nResize like Paddle and normalize to a BGR NCHW tensor.\n\n\n\nimport numpy as np\nfrom fastcore.test import test_eq\n\npage = np.zeros((8, 16, 3), np.uint8)\ntensor = det_input(page, 32, 32)\ntest_eq(tensor.shape, (1, 3, 32, 32))\ntest_eq(tensor.dtype, np.float32)\ntensor.shape\n\n(1, 3, 32, 32)",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#boxes",
+    "href": "ocr.html#boxes",
+    "title": "ocr",
+    "section": "Boxes",
+    "text": "Boxes\nThe unclip distance is the DB post-process offset: area times the ratio, divided by the perimeter. Round joins match PaddleOCR.\n\n\nsource\n\nboxes_from_bitmap\ndef boxes_from_bitmap(\n    prob:np.ndarray, dest_width:int, dest_height:int, *, thresh:float=0.3, box_thresh:float=0.6,\n    unclip_ratio:float=1.5, max_candidates:int=3000\n)-&gt;list[tuple[int, int, int, int, float]]:\nPaddleOCR DBPostProcess quads, returned as axis-aligned boxes.\n\n\nCoordinates come back in the original image. The recognizer crops that rectangle. Boxes are sorted top to bottom, then left to right. A contour whose short side is under 3 pixels, or whose mean score is under 0.6, is dropped. After the unclip the short side must clear 5.\n\nimport numpy as np\nfrom fastcore.test import test_eq\n\nprob = np.zeros((64, 64), np.float32)\nprob[20:36, 8:48] = 0.95\nboxes = boxes_from_bitmap(prob, 64, 64)\ntest_eq(len(boxes), 1)\nleft, top, right, bottom, score = boxes[0]\ntest_eq(score &gt; 0.6, True)\ntest_eq(left &lt; 8, True)\ntest_eq(right &gt; 48, True)\nboxes[0]\n\n(0, 12, 55, 43, 0.949999988079071)",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#recognition",
+    "href": "ocr.html#recognition",
+    "title": "ocr",
+    "section": "Recognition",
+    "text": "Recognition\n\n\nsource\n\nrecognize_crop\ndef recognize_crop(\n    model, image_rgb:np.ndarray, charset:list[str]\n)-&gt;str:\n\n\nA line that fits in 320 columns is one forward pass. A longer line is a sliding window. Five timesteps are dropped on each interior edge, where the crop has no context, and the stride is chosen so the kept timesteps abut. The network’s width stride is 8.\n\n\nsource\n\ndetect_boxes\ndef detect_boxes(\n    image_rgb:np.ndarray, det_model\n)-&gt;list[tuple[int, int, int, int, float]]:\nText boxes in original pixels, from one forward pass at the PaddleOCR det size.\n\n\n\n\nsource\n\nread_page\ndef read_page(\n    image_rgb:np.ndarray, det_model, rec_model, charset:list[str]\n)-&gt;list[tuple[str, float, int, int, int, int]]:\n\n\nread_page drops crops the recognizer turns into an empty string. The score on each line is the detector score of that box, not a recognition probability.\n\n\nsource\n\ndraw_boxes\ndef draw_boxes(\n    image_rgb:np.ndarray, lines:list[tuple[str, float, int, int, int, int]]\n)-&gt;np.ndarray:\nPaint a green rectangle around each recognized line.\n\n\n\n\nsource\n\nsave_rgb\ndef save_rgb(\n    path:Path, image_rgb:np.ndarray\n)-&gt;None:",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "ocr.html#command",
+    "href": "ocr.html#command",
+    "title": "ocr",
+    "section": "Command",
+    "text": "Command\n\n\nsource\n\nmain\ndef main()-&gt;None:",
+    "crumbs": [
+      "ocr"
+    ]
+  },
+  {
+    "objectID": "detector.html",
+    "href": "detector.html",
+    "title": "detector",
+    "section": "",
+    "text": "Stem, four LCNet stages, RepLKPAN, and the DB head. The four stage outputs are the neck’s fine, mid, low, and coarse maps. Their widths are 128, 256, 512, and 896.\n\n\nsource\n\nPPOCRV6Detector\ndef PPOCRV6Detector(\n    config:DetectorConfig | None=None\n)-&gt;None:\nStem, four LCNet stages, RepLKPAN, and the DB head.\n\n\nThe neck sees every stage, not only the last one. The head then upsamples the fused map back to the detector input resolution.",
+    "crumbs": [
+      "detector"
+    ]
+  },
+  {
+    "objectID": "activations.html",
+    "href": "activations.html",
+    "title": "activations",
+    "section": "",
+    "text": "Hardsigmoid is the squeeze-excite gate. GELU mixes channels in LCNet. ReLU is the stem, the DB head, and IntraCL.\nmax.nn does not provide the squeeze-excite hardsigmoid. GELU is the LCNet channel mixer. ReLU is the stem, the DB head, and IntraCL. The cells below need MAX, so nbdev-test skips them unless you pass --flags notest.\n\n\nsource\n\nhardsigmoid\ndef hardsigmoid(\n    x:TensorValue, alpha:float, beta:float=0.5\n)-&gt;TensorValue:\n\n\nhardsigmoid(x) = min(1, max(0, αx + β)) with β = 0.5. The configs set α to 1/6.\n\n\nsource\n\ngelu\ndef gelu(\n    x:TensorValue\n)-&gt;TensorValue:\n\n\n\n\nsource\n\nrelu\ndef relu(\n    x:TensorValue\n)-&gt;TensorValue:",
+    "crumbs": [
+      "activations"
+    ]
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "core",
+    "section": "",
+    "text": "Checkpoints and requirements.txt live next to pixi.toml, not inside the package directory.\nThe notebooks export into solid_lens/, so a module’s __file__ is not the top of the repo. Checkpoints, the character dictionary, and requirements.txt stay next to pixi.toml. Call repo_root instead of assuming where the file lives. In a notebook there is no __file__, so the search also starts from the working directory.\n\n\nsource\n\nrepo_root\ndef repo_root()-&gt;Path:\nCheckout that holds models/, pixi.toml, and requirements.txt.\n\n\nrepo_root is the directory you clone, not the package directory inside it.\n\nfrom fastcore.test import test_eq\n\nroot = repo_root()\ntest_eq(root.name, \"solid_lens\")\ntest_eq((root / \"pixi.toml\").is_file(), True)\ntest_eq((root / \"nbs\").is_dir(), True)\nroot.name\n\n'solid_lens'",
+    "crumbs": [
+      "core"
+    ]
+  },
+  {
+    "objectID": "onnx.html",
+    "href": "onnx.html",
+    "title": "onnx",
+    "section": "",
+    "text": "The official checkpoints are ONNX. Loading them does not require the onnx package or a runtime. A graph is a protobuf message: nodes in exporter order, initializers, and the input and output shapes. weights walks that node list.",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "onnx.html#varints",
+    "href": "onnx.html#varints",
+    "title": "onnx",
+    "section": "Varints",
+    "text": "Varints\nProtobuf integers are base-128, little-endian, with the high bit set on every byte but the last.",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "onnx.html#messages",
+    "href": "onnx.html#messages",
+    "title": "onnx",
+    "section": "Messages",
+    "text": "Messages\nOne message is a sequence of (field_number, wire_type, payload). Wire 0 is a varint, 1 is 8 bytes, 2 is a length-delimited blob, and 5 is 4 bytes.\n\n\nsource\n\nfields\ndef fields(\n    buf:bytes\n)-&gt;list[tuple[int, int, bytes | int]]:\nReturn (field_number, wire_type, payload) for one message.\n\n\n150 is the protobuf specimen for a varint: the bytes 96 01. Field 1, wire 0, is the key byte 08 in front of that. Zigzag maps even numbers to non-negative integers and odd numbers to negative ones.\n\nfrom fastcore.test import test_eq\n\ntest_eq(_varint(bytes([0x96, 0x01]), 0), (150, 2))\ntest_eq(fields(bytes([0x08, 0x96, 0x01])), [(1, 0, 150)])\ntest_eq([_zigzag(v) for v in range(4)], [0, -1, 1, -2])\nfields(bytes([0x08, 0x96, 0x01]))\n\n[(1, 0, 150)]",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "onnx.html#tensors",
+    "href": "onnx.html#tensors",
+    "title": "onnx",
+    "section": "Tensors",
+    "text": "Tensors\nAn initializer is a name, a dtype tag, a shape, and either raw little-endian bytes or a packed numeric field. bfloat16 is stored as the top 16 bits of a float32.\n\n\nsource\n\nTensor\ndef Tensor(\n    name:str, array:np.ndarray\n)-&gt;None:\nNamed initializer array.\n\n\n\n\nsource\n\nparse_tensor\ndef parse_tensor(\n    buf:bytes\n)-&gt;Tensor:",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "onnx.html#attributes-and-nodes",
+    "href": "onnx.html#attributes-and-nodes",
+    "title": "onnx",
+    "section": "Attributes and nodes",
+    "text": "Attributes and nodes\n\n\nsource\n\nAttribute\ndef Attribute()-&gt;None:\nOne node attribute: a scalar, bytes, or a list of those.\n\n\n\n\nsource\n\nparse_attribute\ndef parse_attribute(\n    buf:bytes\n)-&gt;Attribute:\n\n\n\n\nsource\n\nNode\ndef Node()-&gt;None:\nOp type, name, input and output names, and attributes.\n\n\n\n\nsource\n\nparse_node\ndef parse_node(\n    buf:bytes\n)-&gt;Node:\n\n\nA node records op type, name, input and output names, and attributes. The weight loader only needs the op type and the input names, because those names are the keys of the initializers.",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "onnx.html#the-graph",
+    "href": "onnx.html#the-graph",
+    "title": "onnx",
+    "section": "The graph",
+    "text": "The graph\n\n\nsource\n\nValueInfo\ndef ValueInfo(\n    name:str, shape:list[int | str], dtype:int\n)-&gt;None:\nGraph input or output: name, shape, and a dtype tag.\n\n\n\n\nsource\n\nparse_value_info\ndef parse_value_info(\n    buf:bytes\n)-&gt;ValueInfo:\n\n\n\n\nsource\n\nGraph\ndef Graph()-&gt;None:\nNodes, initializers, and the graph inputs and outputs.\n\n\n\n\nsource\n\nparse_graph\ndef parse_graph(\n    buf:bytes\n)-&gt;Graph:\n\n\n\n\nsource\n\nload\ndef load(\n    path:str | Path\n)-&gt;Graph:\n\n\nAn ONNX file is a ModelProto. Field 7 is the graph. Everything the loader needs is in that message: nodes, then initializers, then inputs and outputs.",
+    "crumbs": [
+      "onnx"
+    ]
+  },
+  {
+    "objectID": "handwriting.html",
+    "href": "handwriting.html",
+    "title": "handwriting",
+    "section": "",
+    "text": "The page is a lined hearing note in print, not cursive: a date, who was in the room, a direct-examination outline, and an objection. The file is nbs/samples/hwr.png. Margin labels, arrows, and the tier diagram are on the page.\nThe reference is those words, including the margin labels. Arrow strokes are not words, so they are left out. A line the model invents still counts against the error rate.",
+    "crumbs": [
+      "handwriting"
+    ]
+  },
+  {
+    "objectID": "handwriting.html#the-scan",
+    "href": "handwriting.html#the-scan",
+    "title": "handwriting",
+    "section": "The scan",
+    "text": "The scan\nThe file is nbs/samples/hwr.png. Cells from here on compile graphs, so a plain nbdev-test skips them.",
+    "crumbs": [
+      "handwriting"
+    ]
+  },
+  {
+    "objectID": "handwriting.html#read-the-page",
+    "href": "handwriting.html#read-the-page",
+    "title": "handwriting",
+    "section": "Read the page",
+    "text": "Read the page\nOne detector graph for this shape, then the shared 48×320 recognizer. The note is letterboxed, with its aspect kept, onto the 1056×1792 detector already compiled, so this cell opens that cache instead of building a new graph. The times after that are a warmup plus the median of five reads. Detection is one forward pass. Recognition is the sum of the line crops.\n\nimport time\n\nfrom solid_lens.model import compile_detector, compile_recognizer\nimport numpy as np\n\nfrom solid_lens.ocr import (\n    detection_hw,\n    detect_boxes,\n    load_charset,\n    load_image,\n    recognize_crop,\n    resize_hwc,\n)\n\ndef letterbox(image, out_h, out_w):\n    \"Scale to fit, then pad with white. The detector shape stays a multiple of 32.\"\n    height, width = image.shape[:2]\n    scale = min(out_w / width, out_h / height)\n    fitted_h = max(1, int(round(height * scale)))\n    fitted_w = max(1, int(round(width * scale)))\n    fitted = resize_hwc(image, fitted_h, fitted_w)\n    canvas = np.full((out_h, out_w, 3), 255, np.uint8)\n    top = (out_h - fitted_h) // 2\n    left = (out_w - fitted_w) // 2\n    canvas[top:top + fitted_h, left:left + fitted_w] = fitted\n    return canvas\n\nimage = letterbox(load_image(PAGE), 1792, 1056)\nheight, width = image.shape[:2]\ndet_h, det_w = detection_hw(height, width)\ncharset = load_charset(ROOT / \"models\" / \"ppocrv6_dict.txt\", add_space=True)\n\nt0 = time.perf_counter()\ndetector = compile_detector(\n    height=det_h,\n    width=det_w,\n    cache_dir=ROOT / \"models\" / f\"native_medium_det_{det_h}x{det_w}.mef\",\n)\ndetector_ready = time.perf_counter() - t0\nt0 = time.perf_counter()\nrecognizer = compile_recognizer(cache_dir=ROOT / \"models\" / \"native_medium_rec_48x320.mef\")\nrecognizer_ready = time.perf_counter() - t0\nprint(f\"page {width}×{height} px, detector {det_w}×{det_h}\")\nprint(f\"detector ready in {detector_ready:.2f}s, recognizer ready in {recognizer_ready:.2f}s\")\n\ndef read_timed(image):\n    t0 = time.perf_counter()\n    boxes = detect_boxes(image, detector)\n    detect_s = time.perf_counter() - t0\n    lines = []\n    recognize_s = 0.0\n    for left, top, right, bottom, score in boxes:\n        t1 = time.perf_counter()\n        text = recognize_crop(recognizer, image[top:bottom, left:right], charset)\n        recognize_s += time.perf_counter() - t1\n        if text:\n            lines.append((text, score, left, top, right, bottom))\n    return lines, detect_s, recognize_s\n\nread_timed(image)\nruns = [read_timed(image) for _ in range(5)]\nlines, detect_s, recognize_s = min(runs, key=lambda run: run[1] + run[2])\ndetect_ms = sorted(run[1] for run in runs)[len(runs) // 2] * 1000\nrecognize_ms = sorted(run[2] for run in runs)[len(runs) // 2] * 1000\npage_ms = sorted(run[1] + run[2] for run in runs)[len(runs) // 2] * 1000\nprint(f\"{len(lines)} lines\")\nprint(f\"median detect {detect_ms:.0f} ms, recognize {recognize_ms:.0f} ms, page {page_ms:.0f} ms\")\n\npage 1056×1792 px, detector 1056×1792\ndetector ready in 0.77s, recognizer ready in 0.31s\n54 lines\nmedian detect 4312 ms, recognize 3103 ms, page 7588 ms",
+    "crumbs": [
+      "handwriting"
+    ]
+  },
+  {
+    "objectID": "handwriting.html#boxes",
+    "href": "handwriting.html#boxes",
+    "title": "handwriting",
+    "section": "Boxes",
+    "text": "Boxes\nEach box is the axis-aligned crop the recognizer saw. The number matches the table. The score is the mean detector probability inside the quadrilateral, before recognition.\n\nfrom IPython.display import Markdown\n\nrows = [\"| # | score | text |\", \"|---|------:|------|\"]\nfor index, (text, score, *_) in enumerate(lines, 1):\n    safe = text.replace(\"|\", \"\\\\|\")\n    rows.append(f\"| {index} | {score:.2f} | {safe} |\")\ndisplay(Markdown(\"\\n\".join(rows)))\n\n\n\n\n#\nscore\ntext\n\n\n\n\n1\n0.74\nTier\n\n\n2\n0.77\nPage\n\n\n3\n0.91\nDate of Hearing\n\n\n4\n0.79\nSymbols\n\n\n5\n0.61\nber\n\n\n6\n0.69\nQ\n\n\n7\n0.66\nV\n\n\n8\n0.88\n9k/23\n\n\n9\n0.85\n1\n\n\n10\n0.87\nSimpson Client Name\n\n\n11\n0.90\nIn:2:30\n\n\n12\n0.77\nMotion to suppressReaning Description\n\n\n13\n0.93\n- Attend\n\n\n14\n0.91\nOut:4:17\n\n\n15\n0.85\n-ME -Client (HS) - Prosecttor (LH)\n\n\n16\n0.81\n↑\n\n\n17\n0.88\nTime Note\n\n\n18\n0.84\n- Officer Wiggum (aw)—Judge Synder\n\n\n19\n0.91\n[Tier I Level)\n\n\n20\n0.95\nfor Billable\n\n\n21\n0.87\n. Direct CW\n\n\n22\n0.88\n[Tier 2 Level]\n\n\n23\n0.94\nHoors\n\n\n24\n0.88\n- Backgound\n\n\n25\n0.85\nSTIP: Training and expevence\n\n\n26\n0.88\n- supervisor\n\n\n27\n0.87\n[Tier 3 Level]\n\n\n28\n0.89\n→Day Shift\n\n\n29\n0.88\n→ Review reports\n\n\n30\n0.81\n→Conduct officer discipline hearings\n\n\n31\n0.87\n- Date in question\n\n\n32\n0.81\n→ came in despite being sick\n\n\n33\n0.88\n★\n\n\n34\n0.88\n[Tier 4 Level]\n\n\n35\n0.86\n&gt; Recent concussion\n\n\n36\n0.92\nImpact\n\n\n37\n0.90\n&gt; Diagnosed\n\n\n38\n0.92\nMemory?\n\n\n39\n0.84\nLimited activity mote from doctor\n\n\n40\n0.66\n个\n\n\n41\n0.79\nDesk duty: revier day shift report\n\n\n42\n0.94\nQuestion\n\n\n43\n0.85\n→ Reviewed reports for Hs case\n\n\n44\n0.90\nNote\n\n\n45\n0.86\n- Hs case review\n\n\n46\n0.87\n→ Checked body can\n\n\n47\n0.81\n→checked cellebrite report\n\n\n48\n0.89\n→ Diicussion of report\n\n\n49\n0.79\nOBJECTION: Relevance and Hearsay [Sustained I\n\n\n50\n0.81\n↑\n\n\n51\n0.87\n个\n\n\n52\n0.84\nGrounds\n\n\n53\n0.88\nObjection Legal Note\n\n\n54\n0.90\nOutcome",
+    "crumbs": [
+      "handwriting"
+    ]
+  },
+  {
+    "objectID": "handwriting.html#accuracy-and-speed",
+    "href": "handwriting.html#accuracy-and-speed",
+    "title": "handwriting",
+    "section": "Accuracy and speed",
+    "text": "Accuracy and speed\nCharacter error rate is the Levenshtein distance divided by the length of the reference, after casefolding and dropping punctuation. A line the model adds makes that rate worse. Character recall is the longest common subsequence divided by the reference length, so it says how much of the note was recovered even when extra text was read.\n\nfrom IPython.display import Markdown\n\nhypothesis = \" \".join(text for text, *_ in lines)\nmetrics = score_text(hypothesis, REFERENCE)\nsummary = f\"\"\"\n| | |\n|---|---:|\n| lines | {len(lines)} |\n| reference characters | {metrics['characters']:.0f} |\n| reference words | {metrics['words']:.0f} |\n| character error rate | {metrics['cer']:.1%} |\n| character recall | {metrics['character_recall']:.1%} |\n| character precision | {metrics['character_precision']:.1%} |\n| word error rate | {metrics['wer']:.1%} |\n| detector, median | {detect_ms:.0f} ms |\n| recognizer, median | {recognize_ms:.0f} ms |\n| page, median | {page_ms:.0f} ms |\n| detector graph ready | {detector_ready:.2f} s |\n| recognizer graph ready | {recognizer_ready:.2f} s |\n\"\"\"\ndisplay(Markdown(summary))\nprint(hypothesis)\n\n\n\n\nlines\n54\n\n\nreference characters\n749\n\n\nreference words\n122\n\n\ncharacter error rate\n25.5%\n\n\ncharacter recall\n85.4%\n\n\ncharacter precision\n85.7%\n\n\nword error rate\n37.7%\n\n\ndetector, median\n4312 ms\n\n\nrecognizer, median\n3103 ms\n\n\npage, median\n7588 ms\n\n\ndetector graph ready\n0.77 s\n\n\nrecognizer graph ready\n0.31 s\n\n\n\n\n\nTier Page Date of Hearing Symbols ber Q V 9k/23 1 Simpson  Client Name In:2:30 Motion to suppressReaning Description - Attend Out:4:17 -ME -Client (HS) - Prosecttor (LH) ↑ Time Note - Officer Wiggum (aw)—Judge Synder [Tier I Level) for Billable . Direct CW [Tier 2 Level] Hoors - Backgound STIP: Training and expevence - supervisor [Tier 3 Level] →Day Shift → Review reports →Conduct officer discipline hearings - Date in question → came in despite being sick ★ [Tier 4 Level] &gt; Recent concussion Impact &gt; Diagnosed Memory? Limited activity mote from doctor 个 Desk duty: revier day shift report Question → Reviewed reports for Hs case Note - Hs case review → Checked body can →checked cellebrite report → Diicussion of report OBJECTION: Relevance and Hearsay [Sustained I ↑ 个 Grounds Objection Legal Note Outcome",
+    "crumbs": [
+      "handwriting"
+    ]
+  },
+  {
+    "objectID": "config.html",
+    "href": "config.html",
+    "title": "config",
+    "section": "",
+    "text": "Detection uses PPLCNetV4, a RepLKPAN neck with IntraCL, and the inference DB head. Recognition uses the same backbone with height-only downsampling, then a LightSVTR neck and a CTC head. The NRTR head exists only while training, so it is not in these graphs.",
+    "crumbs": [
+      "config"
+    ]
+  },
+  {
+    "objectID": "config.html#blocks",
+    "href": "config.html#blocks",
+    "title": "config",
+    "section": "Blocks",
+    "text": "Blocks\nA block is (kernel, in_channels, out_channels, stride, use_se). Stride is a pair when the recognizer downsamples height and keeps the width.\nDetection stages s1 to s4 are the four maps the neck reads. Total stride at the end of the stem plus s1 is 4, then each later stage halves both sides.\nRecognition never strides in width inside the backbone. Height is reduced twice, by the (2, 1) blocks, and the rest of the way by the pool in front of the neck.\n\nfrom fastcore.test import test_eq\n\ntest_eq(DET_BLOCKS[\"s1\"][0], (3, 128, 128, 1, True))\ntest_eq(REC_BLOCKS[\"b4\"][0][3], (2, 1))\ntest_eq(len(REC_BLOCKS[\"b4\"]), 7)\nREC_BLOCKS[\"b5\"][-1]\n\n(3, 768, 768, 1, False)",
+    "crumbs": [
+      "config"
+    ]
+  },
+  {
+    "objectID": "config.html#detector",
+    "href": "config.html#detector",
+    "title": "config",
+    "section": "Detector",
+    "text": "Detector\n\n\nsource\n\nDetectorConfig\ndef DetectorConfig(\n    stem_mid:int=64, stem_out:int=128, fpn_channels:int=256, replk_kernel:int=9, head_channels:int=64,\n    se_alpha:float=0.16666666666666666\n)-&gt;None:\nWidths, kernel, and squeeze-excite alpha for the medium detector.\n\n\nRepLKPAN uses a 9×9 reparameterized depthwise kernel. The squeeze-excite gate is a hardsigmoid with α = 1/6.\n\nfrom fastcore.test import test_eq\n\ntest_eq(DetectorConfig().fpn_channels, 256)\ntest_eq(DetectorConfig().se_alpha, 1 / 6)\nDetectorConfig()\n\nDetectorConfig(stem_mid=64, stem_out=128, fpn_channels=256, replk_kernel=9, head_channels=64, se_alpha=0.16666666666666666)",
+    "crumbs": [
+      "config"
+    ]
+  },
+  {
+    "objectID": "config.html#recognizer",
+    "href": "config.html#recognizer",
+    "title": "config",
+    "section": "Recognizer",
+    "text": "Recognizer\n\n\nsource\n\nRecognizerConfig\ndef RecognizerConfig(\n    stem_mid:int=64, stem_out:int=128, backbone_channels:int=768, svtr_dim:int=192, svtr_depth:int=2,\n    svtr_heads:int=8, mlp_ratio:float=4.0, local_kernel:int=7, num_classes:int=18710, image_height:int=48,\n    image_width:int=320, se_alpha:float=0.16666666666666666, bn_eps:float=1e-05, final_norm_eps:float=1e-06\n)-&gt;None:\nBackbone width, SVTR size, and the 48×320 image for the medium recognizer.\n\n\nThe CTC head has 18710 classes: the PP-OCRv6 dictionary, plus the blank. The recognizer’s image is 48×320. Two global transformer blocks run at width 192. The norm after the last block is tighter than the norms inside the blocks, 1e-6 rather than 1e-5.\n\nfrom fastcore.test import test_eq\n\nrec = RecognizerConfig()\ntest_eq((rec.image_height, rec.image_width), (48, 320))\ntest_eq(rec.svtr_dim % rec.svtr_heads, 0)\ntest_eq(rec.num_classes, 18710)\nrec\n\nRecognizerConfig(stem_mid=64, stem_out=128, backbone_channels=768, svtr_dim=192, svtr_depth=2, svtr_heads=8, mlp_ratio=4.0, local_kernel=7, num_classes=18710, image_height=48, image_width=320, se_alpha=0.16666666666666666, bn_eps=1e-05, final_norm_eps=1e-06)",
+    "crumbs": [
+      "config"
+    ]
+  },
+  {
+    "objectID": "config.html#device",
+    "href": "config.html#device",
+    "title": "config",
+    "section": "Device",
+    "text": "Device\nThe reference graphs are float32 on CPU. A compiled cache can be reloaded without rebuilding the graph.",
+    "crumbs": [
+      "config"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "solid_lens",
+    "section": "",
+    "text": "Detection is PPLCNetV4, a RepLKPAN neck, and the inference DB head. Recognition uses the same backbone with height-only downsampling, a LightSVTR neck, and CTC. The official ONNX checkpoints supply the weights. The notebooks in nbs/ are the source; nbdev-export writes this package.",
+    "crumbs": [
+      "solid_lens"
+    ]
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "solid_lens",
+    "section": "Install",
+    "text": "Install\nThe graph runtime is Modular MAX, installed here with pixi. Checkpoints are local and are not part of the package.\npixi install\npixi run download",
+    "crumbs": [
+      "solid_lens"
+    ]
+  },
+  {
+    "objectID": "index.html#read-a-page",
+    "href": "index.html#read-a-page",
+    "title": "solid_lens",
+    "section": "Read a page",
+    "text": "Read a page\nread_page returns each line as text, detector confidence, and an axis-aligned box in the original image.\n\nfrom pathlib import Path\nfrom solid_lens.core import repo_root\nfrom solid_lens.model import compile_detector, compile_recognizer\nfrom solid_lens.ocr import detection_hw, load_charset, load_image, read_page\n\nroot = repo_root()\nimage = load_image(Path(\"page.png\"))\ndet_h, det_w = detection_hw(*image.shape[:2])\ndetector = compile_detector(\n    height=det_h, width=det_w,\n    cache_dir=root/\"models\"/f\"native_medium_det_{det_h}x{det_w}.mef\")\nrecognizer = compile_recognizer(cache_dir=root/\"models\"/\"native_medium_rec_48x320.mef\")\ncharset = load_charset(root/\"models\"/\"ppocrv6_dict.txt\", add_space=True)\nread_page(image, detector, recognizer, charset)\n\nThe same pipeline is a command, and a JSON service on port 5001:\npixi run ocr page.png\npixi run serve\nPOST one or more files to /ocr as images or image. Each result has the file name and a list of fragments: text, norm, score, and box.",
+    "crumbs": [
+      "solid_lens"
+    ]
+  },
+  {
+    "objectID": "index.html#develop",
+    "href": "index.html#develop",
+    "title": "solid_lens",
+    "section": "Develop",
+    "text": "Develop\nEdit the notebooks. The modules under solid_lens/ are generated, and each one names the notebook to change.\nnbdev-export\nnbdev-test\nnbdev-test runs the lessons that do not need MAX. nbdev-test --flags notest also executes the cells that build graphs, which needs the pixi environment.\nThe reading order follows a forward pass. config is the architecture. onnx reads a checkpoint. The layer notebooks are the blocks max.nn does not ship. detector and recognizer stack them, weights binds the checkpoint, model compiles, and ocr is the page pipeline.",
+    "crumbs": [
+      "solid_lens"
+    ]
+  },
+  {
+    "objectID": "download.html",
+    "href": "download.html",
+    "title": "download",
+    "section": "",
+    "text": "requirements.txt is a manifest, not a pip file. Each line is a filename and a URL. The files land in models/ at the checkout root.\nBlank lines and comments are skipped. A line that is not two tokens is an error, which is what we want from a hand-edited manifest.\n\nfrom fastcore.test import test_eq\n\nnames = [name for name, _ in _entries()]\ntest_eq(names, [\"medium_det.onnx\", \"medium_rec.onnx\", \"ppocrv6_dict.txt\"])\nnames\n\n['medium_det.onnx', 'medium_rec.onnx', 'ppocrv6_dict.txt']\n\n\n\n\nsource\n\ndownload\ndef download(\n    name:str, url:str\n)-&gt;None:\n\n\nAn existing file is left alone, so a second run does not download the checkpoints again.\n\n\nsource\n\nmain\ndef main()-&gt;None:",
+    "crumbs": [
+      "download"
+    ]
+  },
+  {
+    "objectID": "conv.html",
+    "href": "conv.html",
+    "title": "conv",
+    "section": "",
+    "text": "max.nn.Conv2d(permute=True) keeps filters in OIHW order, which is how Paddle exported them. A stride-2 kernel-2 transposed convolution does not compile in this MAX build (num_groups fails to infer). With the kernel equal to the stride and no padding, the four taps do not overlap, so the transpose is four pointwise mixes interleaved on the spatial axes.",
+    "crumbs": [
+      "conv"
+    ]
+  },
+  {
+    "objectID": "conv.html#padding",
+    "href": "conv.html#padding",
+    "title": "conv",
+    "section": "Padding",
+    "text": "Padding\n\n\nsource\n\nsame_padding\ndef same_padding(\n    kernel:int\n)-&gt;int:\n\n\nOdd kernels, which is every kernel in these graphs, need kernel // 2 on each side for a same-size convolution.\n\nfrom fastcore.test import test_eq\n\ntest_eq(same_padding(3), 1)\ntest_eq(same_padding(9), 4)\nsame_padding(9)\n\n4\n\n\n\n\nsource\n\nconv2d\ndef conv2d(\n    in_channels:int, out_channels:int, kernel_size:int | tuple[int, int], *, stride:int | tuple[int, int]=1,\n    padding:int | tuple[int, int, int, int]=0, groups:int=1, bias:bool=True, device:DeviceRef=cpu:0\n)-&gt;Conv2d:\n\n\npermute=True is the whole layout contract. The checkpoint stores OIHW. MAX’s default would be a different axis order, and load_checkpoint compares shapes exactly.",
+    "crumbs": [
+      "conv"
+    ]
+  },
+  {
+    "objectID": "conv.html#stride-2-transpose",
+    "href": "conv.html#stride-2-transpose",
+    "title": "conv",
+    "section": "Stride-2 transpose",
+    "text": "Stride-2 transpose\n\n\nsource\n\nConvTranspose2x2\ndef ConvTranspose2x2(\n    in_channels:int, out_channels:int, *, bias:bool=True\n)-&gt;None:\nStride-2, kernel-2, pad-0 conv-transpose, written as interleaved matmuls.\n\n\nEach input pixel becomes a 2×2 block. The four taps are the slices of a weight laid out (in, out, 2, 2), which is the ONNX conv-transpose layout. Width is interleaved first, then height, then the result is permuted back to NCHW.\n\n\nsource\n\nnchw_to_nhwc\ndef nchw_to_nhwc(\n    x:TensorValue\n)-&gt;TensorValue:\n\n\n\n\nsource\n\nnhwc_to_nchw\ndef nhwc_to_nchw(\n    x:TensorValue\n)-&gt;TensorValue:\n\n\nPooling in this MAX build wants NHWC. The backbone stays NCHW, so the pool sites convert on the way in and back out.",
+    "crumbs": [
+      "conv"
+    ]
+  },
+  {
+    "objectID": "svtr.html",
+    "href": "svtr.html",
+    "title": "LightSVTR",
+    "section": "",
+    "text": "The exported graph is the inference network. Dropout is gone. Each Conv-BN-Swish stays unfused, and each LayerNorm is a learned scale and bias. Two global transformer blocks sit between a 1×7 depthwise conv and an additive 1×1 skip. The NRTR decoder is not in the checkpoint.\nsource\n\nLayerNorm\ndef LayerNorm(\n    channels:int, eps:float\n)-&gt;None:\nScale and bias. The checkpoint stores them as a Mul followed by an Add.\nThe checkpoint does not contain a LayerNorm op. It contains the scale and the bias, and weights finds those as a Mul followed by an Add. This module is the pair those tensors belong to.\nsource\n\nConvBNSwish\ndef ConvBNSwish(\n    in_channels:int, out_channels:int, eps:float\n)-&gt;None:\n1x1 projection used by the skip and the channel reduction.\nsource\n\nLocalMixer\ndef LocalMixer(\n    channels:int, kernel:int, eps:float\n)-&gt;None:\n1xk depthwise conv along the text width, added back onto its input.\nThe local mixer is a 1×7 depthwise conv along the sequence, then batch-norm and SiLU, added back to its input. It does not mix height. By the time it runs, the map is one row tall.",
+    "crumbs": [
+      "LightSVTR"
+    ]
+  },
+  {
+    "objectID": "svtr.html#attention",
+    "href": "svtr.html#attention",
+    "title": "LightSVTR",
+    "section": "Attention",
+    "text": "Attention\n\n\nsource\n\nSVTRBlock\ndef SVTRBlock(\n    dim:int, num_heads:int, mlp_ratio:float, eps:float\n)-&gt;None:\nPre-norm global attention and a Swish MLP. Dropout is identity here.\n\n\nThe scale multiplies the query only. That is how the exported graph is written, and it is not the same op as scaling the scores after the matmul when the dtype is not exact. The MLP is SiLU, not GELU. Dropout is absent, so it is not in the module.\n\n\nsource\n\nLightSVTR\ndef LightSVTR(\n    in_channels:int, dim:int, depth:int, num_heads:int, mlp_ratio:float, local_kernel:int, eps:float,\n    final_eps:float\n)-&gt;None:\nLocal conv, global blocks, then an additive skip of the backbone features.\n\n\nThe skip is constructed first because the exporter emits it first. final_eps is 1e-6 and applies only to the norm after the last block. The blocks themselves use eps, which is 1e-5.",
+    "crumbs": [
+      "LightSVTR"
+    ]
+  },
+  {
+    "objectID": "server.html",
+    "href": "server.html",
+    "title": "server",
+    "section": "",
+    "text": "The process holds one recognizer, compiled once, and a detector per input size. The detector graph is fixed-shape, so a new page size compiles a new graph and then reuses it. GET / describes the contract. POST /ocr accepts multipart files in images or image.",
+    "crumbs": [
+      "server"
+    ]
+  },
+  {
+    "objectID": "server.html#text-and-boxes",
+    "href": "server.html#text-and-boxes",
+    "title": "server",
+    "section": "Text and boxes",
+    "text": "Text and boxes\n\n\nsource\n\nnormalize_text\ndef normalize_text(\n    text:str\n)-&gt;str:\nComparison key: compatibility-normalized, casefolded, single-spaced.\n\n\n\nfrom fastcore.test import test_eq\n\ntest_eq(normalize_text(\"  Café\\u00a0  WORLD \"), \"café world\")\nnormalize_text(\"  Café\\u00a0  WORLD \")\n\n'café world'\n\n\n\n\nsource\n\nbox_info\ndef box_info(\n    polygon\n)-&gt;dict:\nAxis-aligned box and the source polygon, in image pixels.\n\n\n\nfrom fastcore.test import test_eq\n\ninfo = box_info([[0, 1], [4, 1], [4, 6], [0, 6]])\ntest_eq(info[\"width\"], 4.0)\ntest_eq(info[\"height\"], 5.0)\ntest_eq(info[\"polygon\"][0], [0.0, 1.0])\ninfo\n\n{'x': 0.0,\n 'y': 1.0,\n 'width': 4.0,\n 'height': 5.0,\n 'polygon': [[0.0, 1.0], [4.0, 1.0], [4.0, 6.0], [0.0, 6.0]]}",
+    "crumbs": [
+      "server"
+    ]
+  },
+  {
+    "objectID": "server.html#the-engine",
+    "href": "server.html#the-engine",
+    "title": "server",
+    "section": "The engine",
+    "text": "The engine\nImporting the compiled modules needs MAX, so the cells from here on are skipped by a plain nbdev-test. Run them with nbdev-test --flags notest inside the pixi environment.\n\n\nsource\n\nSolidLensOCR\ndef SolidLensOCR()-&gt;None:\nPP-OCRv6 medium detector and recognizer.\n\n\nPolygons are the four corners of the axis-aligned crop. rec_scores are the detector confidences for those lines. The recognizer is compiled on the first call. Each detector shape is compiled once and kept.\n\n\nsource\n\nextract_ocr_items\ndef extract_ocr_items(\n    image_path\n)-&gt;list[dict]:\nRun OCR and return text fragments with boxes and confidence.",
+    "crumbs": [
+      "server"
+    ]
+  },
+  {
+    "objectID": "server.html#http",
+    "href": "server.html#http",
+    "title": "server",
+    "section": "HTTP",
+    "text": "HTTP\n\n\nsource\n\nget\ndef get():\n\n\n\n\nsource\n\npost\nasync def post(\n    req\n):\nRead one or more uploaded images and return their OCR items.\n\n\n\n\nsource\n\nmain\ndef main()-&gt;None:",
+    "crumbs": [
+      "server"
+    ]
+  },
+  {
+    "objectID": "neck.html",
+    "href": "neck.html",
+    "title": "DB head",
+    "section": "",
+    "text": "Two stride-2 transposed convolutions restore the input resolution. The probability map is a sigmoid over one channel.\ncoordinate_transform_mode=2 and round_mode=2 are the MAX names for the nearest-neighbor mode the exported graph uses. RepLKPAN calls this with factors 2, 4, and 8.\n\n\nsource\n\nDBHead\ndef DBHead(\n    in_channels:int, hidden:int\n)-&gt;None:\nTwo stride-2 transposes. The probability map is a sigmoid over one channel.\n\n\nThe 3×3 reduces the fused neck to 64 channels. Each transpose doubles the spatial size. The second one emits the single-channel probability map.",
+    "crumbs": [
+      "DB head"
+    ]
+  },
+  {
+    "objectID": "recognizer.html",
+    "href": "recognizer.html",
+    "title": "recognizer",
+    "section": "",
+    "text": "LCNetV4, then a height pool, the LightSVTR neck, and a CTC head. The backbone strides in height only. The pool finishes that reduction so the neck sees a single row.\n\n\nsource\n\nPPOCRV6Recognizer\ndef PPOCRV6Recognizer(\n    config:RecognizerConfig | None=None\n)-&gt;None:\nLCNetV4, a height pool, LightSVTR, and a CTC head.\n\n\nSoftmax is over the class axis. CTC decoding in ocr reads the argmax, so the probabilities are what the checkpoint’s inference graph emits.\n\n\nsource\n\navg_pool_height\ndef avg_pool_height(\n    x:TensorValue\n)-&gt;TensorValue:\n3x2 average pool. Recognition features are one row tall afterwards.\n\n\nThe squeeze and unsqueeze put a singleton height back. LightSVTR still wants NCHW, and it removes that height itself when it builds the sequence.",
+    "crumbs": [
+      "recognizer"
+    ]
+  },
+  {
+    "objectID": "model.html",
+    "href": "model.html",
+    "title": "model",
+    "section": "",
+    "text": "The detector is one graph per input shape, because both sides are fixed and must be multiples of 32. The recognizer is one graph, 48×320. A cache directory of compiled MEFs is reused; an empty directory is where a new compilation is written.\nA non-empty cache is loaded. An empty one receives the compiled model. The directory is the cache key the callers choose, including the detector’s height and width in the name.\n\n\nsource\n\ncompile_detector\ndef compile_detector(\n    size:int | None=None, cache_dir:Path | None=None, *, height:int | None=None, width:int | None=None\n):\nCompile the detector for one input shape.\n\n\nPass size for a square, or height and width for the rectangle detection_hw produces. Both sides must be multiples of 32, which detection_hw already guarantees.\n\n\nsource\n\ncompile_recognizer\ndef compile_recognizer(\n    cache_dir:Path | None=None\n):",
+    "crumbs": [
+      "model"
+    ]
+  }
+]

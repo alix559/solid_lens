@@ -1,0 +1,8 @@
+numpy>=1.26
+pillow>=10
+pyclipper>=1.3
+opencv-python-headless>=4.9
+python-fasthtml>=0.12
+
+[dev]
+nbdev>=3.3.24

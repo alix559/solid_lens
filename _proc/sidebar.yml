@@ -1,0 +1,21 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_core.ipynb
+      - 01_config.ipynb
+      - 02_onnx.ipynb
+      - 03_activations.ipynb
+      - 04_conv.ipynb
+      - 05_lcnet.ipynb
+      - 06_neck.ipynb
+      - 07_pan.ipynb
+      - 08_svtr.ipynb
+      - 09_detector.ipynb
+      - 10_recognizer.ipynb
+      - 11_weights.ipynb
+      - 12_model.ipynb
+      - 13_ocr.ipynb
+      - 14_download.ipynb
+      - 15_server.ipynb
+      - 16_handwriting.ipynb

@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="description" content="Read a handwritten hearing note and score the page.">
+
+<title>handwriting – solid_lens</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-d3f2d8a21102af08f92b22b59853d727.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="handwriting – solid_lens">
+<meta property="og:description" content="Read a handwritten hearing note and score the page.">
+<meta property="og:site_name" content="solid_lens">
+<meta name="twitter:title" content="handwriting – solid_lens">
+<meta name="twitter:description" content="Read a handwritten hearing note and score the page.">
+<meta name="twitter:card" content="summary">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">solid_lens</span>
+    </a>
+  </div>
+        <div class="quarto-navbar-tools tools-end">
+</div>
+          <div id="quarto-search" class="" title="Search"></div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./handwriting.html">handwriting</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">solid_lens</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./core.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">core</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./config.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">config</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./onnx.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">onnx</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./activations.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">activations</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./conv.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">conv</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./lcnet.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lcnet</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./neck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">DB head</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./pan.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">RepLKPAN</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./svtr.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">LightSVTR</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./detector.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">detector</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./recognizer.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">recognizer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./weights.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">weights</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">model</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./ocr.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ocr</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./download.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">download</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./server.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">server</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./handwriting.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">handwriting</span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-scan" id="toc-the-scan" class="nav-link active" data-scroll-target="#the-scan">The scan</a></li>
+  <li><a href="#read-the-page" id="toc-read-the-page" class="nav-link" data-scroll-target="#read-the-page">Read the page</a></li>
+  <li><a href="#boxes" id="toc-boxes" class="nav-link" data-scroll-target="#boxes">Boxes</a></li>
+  <li><a href="#accuracy-and-speed" id="toc-accuracy-and-speed" class="nav-link" data-scroll-target="#accuracy-and-speed">Accuracy and speed</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/alix559/solid_lens/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div><div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="handwriting.html.md"><i class="bi bi-file-code"></i>Markdown</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">handwriting</h1>
+</div>
+
+<div>
+  <div class="description">
+    Read a handwritten hearing note and score the page.
+  </div>
+</div>
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<!-- WARNING: THIS FILE WAS AUTOGENERATED! DO NOT EDIT! -->
+<p>The page is a lined hearing note in print, not cursive: a date, who was in the room, a direct-examination outline, and an objection. The file is <code>nbs/samples/hwr.png</code>. Margin labels, arrows, and the tier diagram are on the page.</p>
+<p>The reference is those words, including the margin labels. Arrow strokes are not words, so they are left out. A line the model invents still counts against the error rate.</p>
+<section id="the-scan" class="level2">
+<h2 class="anchored" data-anchor-id="the-scan">The scan</h2>
+<p>The file is <code>nbs/samples/hwr.png</code>. Cells from here on compile graphs, so a plain <code>nbdev-test</code> skips them.</p>
+</section>
+<section id="read-the-page" class="level2">
+<h2 class="anchored" data-anchor-id="read-the-page">Read the page</h2>
+<p>One detector graph for this shape, then the shared 48×320 recognizer. The note is letterboxed, with its aspect kept, onto the 1056×1792 detector already compiled, so this cell opens that cache instead of building a new graph. The times after that are a warmup plus the median of five reads. Detection is one forward pass. Recognition is the sum of the line crops.</p>
+<div id="a7b8c9d0e1f2" class="cell" data-notest="true">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> time</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> solid_lens.model <span class="im">import</span> compile_detector, compile_recognizer</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> solid_lens.ocr <span class="im">import</span> (</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    detection_hw,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    detect_boxes,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    load_charset,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    load_image,</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    recognize_crop,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    resize_hwc,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> letterbox(image, out_h, out_w):</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    <span class="co">"Scale to fit, then pad with white. The detector shape stays a multiple of 32."</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    height, width <span class="op">=</span> image.shape[:<span class="dv">2</span>]</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>    scale <span class="op">=</span> <span class="bu">min</span>(out_w <span class="op">/</span> width, out_h <span class="op">/</span> height)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    fitted_h <span class="op">=</span> <span class="bu">max</span>(<span class="dv">1</span>, <span class="bu">int</span>(<span class="bu">round</span>(height <span class="op">*</span> scale)))</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>    fitted_w <span class="op">=</span> <span class="bu">max</span>(<span class="dv">1</span>, <span class="bu">int</span>(<span class="bu">round</span>(width <span class="op">*</span> scale)))</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>    fitted <span class="op">=</span> resize_hwc(image, fitted_h, fitted_w)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>    canvas <span class="op">=</span> np.full((out_h, out_w, <span class="dv">3</span>), <span class="dv">255</span>, np.uint8)</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>    top <span class="op">=</span> (out_h <span class="op">-</span> fitted_h) <span class="op">//</span> <span class="dv">2</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    left <span class="op">=</span> (out_w <span class="op">-</span> fitted_w) <span class="op">//</span> <span class="dv">2</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    canvas[top:top <span class="op">+</span> fitted_h, left:left <span class="op">+</span> fitted_w] <span class="op">=</span> fitted</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> canvas</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>image <span class="op">=</span> letterbox(load_image(PAGE), <span class="dv">1792</span>, <span class="dv">1056</span>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>height, width <span class="op">=</span> image.shape[:<span class="dv">2</span>]</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>det_h, det_w <span class="op">=</span> detection_hw(height, width)</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>charset <span class="op">=</span> load_charset(ROOT <span class="op">/</span> <span class="st">"models"</span> <span class="op">/</span> <span class="st">"ppocrv6_dict.txt"</span>, add_space<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>detector <span class="op">=</span> compile_detector(</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span>det_h,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span>det_w,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>    cache_dir<span class="op">=</span>ROOT <span class="op">/</span> <span class="st">"models"</span> <span class="op">/</span> <span class="ss">f"native_medium_det_</span><span class="sc">{</span>det_h<span class="sc">}</span><span class="ss">x</span><span class="sc">{</span>det_w<span class="sc">}</span><span class="ss">.mef"</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>detector_ready <span class="op">=</span> time.perf_counter() <span class="op">-</span> t0</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>recognizer <span class="op">=</span> compile_recognizer(cache_dir<span class="op">=</span>ROOT <span class="op">/</span> <span class="st">"models"</span> <span class="op">/</span> <span class="st">"native_medium_rec_48x320.mef"</span>)</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>recognizer_ready <span class="op">=</span> time.perf_counter() <span class="op">-</span> t0</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"page </span><span class="sc">{</span>width<span class="sc">}</span><span class="ss">×</span><span class="sc">{</span>height<span class="sc">}</span><span class="ss"> px, detector </span><span class="sc">{</span>det_w<span class="sc">}</span><span class="ss">×</span><span class="sc">{</span>det_h<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"detector ready in </span><span class="sc">{</span>detector_ready<span class="sc">:.2f}</span><span class="ss">s, recognizer ready in </span><span class="sc">{</span>recognizer_ready<span class="sc">:.2f}</span><span class="ss">s"</span>)</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> read_timed(image):</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>    t0 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>    boxes <span class="op">=</span> detect_boxes(image, detector)</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>    detect_s <span class="op">=</span> time.perf_counter() <span class="op">-</span> t0</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>    lines <span class="op">=</span> []</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>    recognize_s <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> left, top, right, bottom, score <span class="kw">in</span> boxes:</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>        t1 <span class="op">=</span> time.perf_counter()</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>        text <span class="op">=</span> recognize_crop(recognizer, image[top:bottom, left:right], charset)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>        recognize_s <span class="op">+=</span> time.perf_counter() <span class="op">-</span> t1</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> text:</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>            lines.append((text, score, left, top, right, bottom))</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> lines, detect_s, recognize_s</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>read_timed(image)</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>runs <span class="op">=</span> [read_timed(image) <span class="cf">for</span> _ <span class="kw">in</span> <span class="bu">range</span>(<span class="dv">5</span>)]</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>lines, detect_s, recognize_s <span class="op">=</span> <span class="bu">min</span>(runs, key<span class="op">=</span><span class="kw">lambda</span> run: run[<span class="dv">1</span>] <span class="op">+</span> run[<span class="dv">2</span>])</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>detect_ms <span class="op">=</span> <span class="bu">sorted</span>(run[<span class="dv">1</span>] <span class="cf">for</span> run <span class="kw">in</span> runs)[<span class="bu">len</span>(runs) <span class="op">//</span> <span class="dv">2</span>] <span class="op">*</span> <span class="dv">1000</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>recognize_ms <span class="op">=</span> <span class="bu">sorted</span>(run[<span class="dv">2</span>] <span class="cf">for</span> run <span class="kw">in</span> runs)[<span class="bu">len</span>(runs) <span class="op">//</span> <span class="dv">2</span>] <span class="op">*</span> <span class="dv">1000</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>page_ms <span class="op">=</span> <span class="bu">sorted</span>(run[<span class="dv">1</span>] <span class="op">+</span> run[<span class="dv">2</span>] <span class="cf">for</span> run <span class="kw">in</span> runs)[<span class="bu">len</span>(runs) <span class="op">//</span> <span class="dv">2</span>] <span class="op">*</span> <span class="dv">1000</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span><span class="bu">len</span>(lines)<span class="sc">}</span><span class="ss"> lines"</span>)</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"median detect </span><span class="sc">{</span>detect_ms<span class="sc">:.0f}</span><span class="ss"> ms, recognize </span><span class="sc">{</span>recognize_ms<span class="sc">:.0f}</span><span class="ss"> ms, page </span><span class="sc">{</span>page_ms<span class="sc">:.0f}</span><span class="ss"> ms"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>page 1056×1792 px, detector 1056×1792
+detector ready in 0.77s, recognizer ready in 0.31s
+54 lines
+median detect 4312 ms, recognize 3103 ms, page 7588 ms</code></pre>
+</div>
+</div>
+</section>
+<section id="boxes" class="level2">
+<h2 class="anchored" data-anchor-id="boxes">Boxes</h2>
+<p>Each box is the axis-aligned crop the recognizer saw. The number matches the table. The score is the mean detector probability inside the quadrilateral, before recognition.</p>
+<div id="d0e1f2a3b4c5" class="cell" data-notest="true">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> Markdown</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>rows <span class="op">=</span> [<span class="st">"| # | score | text |"</span>, <span class="st">"|---|------:|------|"</span>]</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> index, (text, score, <span class="op">*</span>_) <span class="kw">in</span> <span class="bu">enumerate</span>(lines, <span class="dv">1</span>):</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    safe <span class="op">=</span> text.replace(<span class="st">"|"</span>, <span class="st">"</span><span class="ch">\\</span><span class="st">|"</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    rows.append(<span class="ss">f"| </span><span class="sc">{</span>index<span class="sc">}</span><span class="ss"> | </span><span class="sc">{</span>score<span class="sc">:.2f}</span><span class="ss"> | </span><span class="sc">{</span>safe<span class="sc">}</span><span class="ss"> |"</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>display(Markdown(<span class="st">"</span><span class="ch">\n</span><span class="st">"</span>.join(rows)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display cell-output-markdown">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th>#</th>
+<th style="text-align: right;">score</th>
+<th>text</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td style="text-align: right;">0.74</td>
+<td>Tier</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td style="text-align: right;">0.77</td>
+<td>Page</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td style="text-align: right;">0.91</td>
+<td>Date of Hearing</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td style="text-align: right;">0.79</td>
+<td>Symbols</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td style="text-align: right;">0.61</td>
+<td>ber</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td style="text-align: right;">0.69</td>
+<td>Q</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td style="text-align: right;">0.66</td>
+<td>V</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td style="text-align: right;">0.88</td>
+<td>9k/23</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td style="text-align: right;">0.85</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td style="text-align: right;">0.87</td>
+<td>Simpson Client Name</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td style="text-align: right;">0.90</td>
+<td>In:2:30</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td style="text-align: right;">0.77</td>
+<td>Motion to suppressReaning Description</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td style="text-align: right;">0.93</td>
+<td>- Attend</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td style="text-align: right;">0.91</td>
+<td>Out:4:17</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td style="text-align: right;">0.85</td>
+<td>-ME -Client (HS) - Prosecttor (LH)</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td style="text-align: right;">0.81</td>
+<td>↑</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td style="text-align: right;">0.88</td>
+<td>Time Note</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td style="text-align: right;">0.84</td>
+<td>- Officer Wiggum (aw)—Judge Synder</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td style="text-align: right;">0.91</td>
+<td>[Tier I Level)</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td style="text-align: right;">0.95</td>
+<td>for Billable</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td style="text-align: right;">0.87</td>
+<td>. Direct CW</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td style="text-align: right;">0.88</td>
+<td>[Tier 2 Level]</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td style="text-align: right;">0.94</td>
+<td>Hoors</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td style="text-align: right;">0.88</td>
+<td>- Backgound</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td style="text-align: right;">0.85</td>
+<td>STIP: Training and expevence</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td style="text-align: right;">0.88</td>
+<td>- supervisor</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td style="text-align: right;">0.87</td>
+<td>[Tier 3 Level]</td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td style="text-align: right;">0.89</td>
+<td>→Day Shift</td>
+</tr>
+<tr class="odd">
+<td>29</td>
+<td style="text-align: right;">0.88</td>
+<td>→ Review reports</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td style="text-align: right;">0.81</td>
+<td>→Conduct officer discipline hearings</td>
+</tr>
+<tr class="odd">
+<td>31</td>
+<td style="text-align: right;">0.87</td>
+<td>- Date in question</td>
+</tr>
+<tr class="even">
+<td>32</td>
+<td style="text-align: right;">0.81</td>
+<td>→ came in despite being sick</td>
+</tr>
+<tr class="odd">
+<td>33</td>
+<td style="text-align: right;">0.88</td>
+<td>★</td>
+</tr>
+<tr class="even">
+<td>34</td>
+<td style="text-align: right;">0.88</td>
+<td>[Tier 4 Level]</td>
+</tr>
+<tr class="odd">
+<td>35</td>
+<td style="text-align: right;">0.86</td>
+<td>&gt; Recent concussion</td>
+</tr>
+<tr class="even">
+<td>36</td>
+<td style="text-align: right;">0.92</td>
+<td>Impact</td>
+</tr>
+<tr class="odd">
+<td>37</td>
+<td style="text-align: right;">0.90</td>
+<td>&gt; Diagnosed</td>
+</tr>
+<tr class="even">
+<td>38</td>
+<td style="text-align: right;">0.92</td>
+<td>Memory?</td>
+</tr>
+<tr class="odd">
+<td>39</td>
+<td style="text-align: right;">0.84</td>
+<td>Limited activity mote from doctor</td>
+</tr>
+<tr class="even">
+<td>40</td>
+<td style="text-align: right;">0.66</td>
+<td>个</td>
+</tr>
+<tr class="odd">
+<td>41</td>
+<td style="text-align: right;">0.79</td>
+<td>Desk duty: revier day shift report</td>
+</tr>
+<tr class="even">
+<td>42</td>
+<td style="text-align: right;">0.94</td>
+<td>Question</td>
+</tr>
+<tr class="odd">
+<td>43</td>
+<td style="text-align: right;">0.85</td>
+<td>→ Reviewed reports for Hs case</td>
+</tr>
+<tr class="even">
+<td>44</td>
+<td style="text-align: right;">0.90</td>
+<td>Note</td>
+</tr>
+<tr class="odd">
+<td>45</td>
+<td style="text-align: right;">0.86</td>
+<td>- Hs case review</td>
+</tr>
+<tr class="even">
+<td>46</td>
+<td style="text-align: right;">0.87</td>
+<td>→ Checked body can</td>
+</tr>
+<tr class="odd">
+<td>47</td>
+<td style="text-align: right;">0.81</td>
+<td>→checked cellebrite report</td>
+</tr>
+<tr class="even">
+<td>48</td>
+<td style="text-align: right;">0.89</td>
+<td>→ Diicussion of report</td>
+</tr>
+<tr class="odd">
+<td>49</td>
+<td style="text-align: right;">0.79</td>
+<td>OBJECTION: Relevance and Hearsay [Sustained I</td>
+</tr>
+<tr class="even">
+<td>50</td>
+<td style="text-align: right;">0.81</td>
+<td>↑</td>
+</tr>
+<tr class="odd">
+<td>51</td>
+<td style="text-align: right;">0.87</td>
+<td>个</td>
+</tr>
+<tr class="even">
+<td>52</td>
+<td style="text-align: right;">0.84</td>
+<td>Grounds</td>
+</tr>
+<tr class="odd">
+<td>53</td>
+<td style="text-align: right;">0.88</td>
+<td>Objection Legal Note</td>
+</tr>
+<tr class="even">
+<td>54</td>
+<td style="text-align: right;">0.90</td>
+<td>Outcome</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="accuracy-and-speed" class="level2">
+<h2 class="anchored" data-anchor-id="accuracy-and-speed">Accuracy and speed</h2>
+<p>Character error rate is the Levenshtein distance divided by the length of the reference, after casefolding and dropping punctuation. A line the model adds makes that rate worse. Character recall is the longest common subsequence divided by the reference length, so it says how much of the note was recovered even when extra text was read.</p>
+<div id="f2a3b4c5d6e7" class="cell" data-notest="true">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> IPython.display <span class="im">import</span> Markdown</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>hypothesis <span class="op">=</span> <span class="st">" "</span>.join(text <span class="cf">for</span> text, <span class="op">*</span>_ <span class="kw">in</span> lines)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>metrics <span class="op">=</span> score_text(hypothesis, REFERENCE)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>summary <span class="op">=</span> <span class="ss">f"""</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="ss">| | |</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="ss">|---|---:|</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="ss">| lines | </span><span class="sc">{</span><span class="bu">len</span>(lines)<span class="sc">}</span><span class="ss"> |</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="ss">| reference characters | </span><span class="sc">{</span>metrics[<span class="st">'characters'</span>]<span class="sc">:.0f}</span><span class="ss"> |</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="ss">| reference words | </span><span class="sc">{</span>metrics[<span class="st">'words'</span>]<span class="sc">:.0f}</span><span class="ss"> |</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="ss">| character error rate | </span><span class="sc">{</span>metrics[<span class="st">'cer'</span>]<span class="sc">:.1%}</span><span class="ss"> |</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="ss">| character recall | </span><span class="sc">{</span>metrics[<span class="st">'character_recall'</span>]<span class="sc">:.1%}</span><span class="ss"> |</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="ss">| character precision | </span><span class="sc">{</span>metrics[<span class="st">'character_precision'</span>]<span class="sc">:.1%}</span><span class="ss"> |</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="ss">| word error rate | </span><span class="sc">{</span>metrics[<span class="st">'wer'</span>]<span class="sc">:.1%}</span><span class="ss"> |</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="ss">| detector, median | </span><span class="sc">{</span>detect_ms<span class="sc">:.0f}</span><span class="ss"> ms |</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="ss">| recognizer, median | </span><span class="sc">{</span>recognize_ms<span class="sc">:.0f}</span><span class="ss"> ms |</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="ss">| page, median | </span><span class="sc">{</span>page_ms<span class="sc">:.0f}</span><span class="ss"> ms |</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="ss">| detector graph ready | </span><span class="sc">{</span>detector_ready<span class="sc">:.2f}</span><span class="ss"> s |</span></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="ss">| recognizer graph ready | </span><span class="sc">{</span>recognizer_ready<span class="sc">:.2f}</span><span class="ss"> s |</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="ss">"""</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>display(Markdown(summary))</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(hypothesis)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-display cell-output-markdown">
+<table class="caption-top table table-sm table-striped small">
+<tbody>
+<tr class="odd">
+<td>lines</td>
+<td style="text-align: right;">54</td>
+</tr>
+<tr class="even">
+<td>reference characters</td>
+<td style="text-align: right;">749</td>
+</tr>
+<tr class="odd">
+<td>reference words</td>
+<td style="text-align: right;">122</td>
+</tr>
+<tr class="even">
+<td>character error rate</td>
+<td style="text-align: right;">25.5%</td>
+</tr>
+<tr class="odd">
+<td>character recall</td>
+<td style="text-align: right;">85.4%</td>
+</tr>
+<tr class="even">
+<td>character precision</td>
+<td style="text-align: right;">85.7%</td>
+</tr>
+<tr class="odd">
+<td>word error rate</td>
+<td style="text-align: right;">37.7%</td>
+</tr>
+<tr class="even">
+<td>detector, median</td>
+<td style="text-align: right;">4312 ms</td>
+</tr>
+<tr class="odd">
+<td>recognizer, median</td>
+<td style="text-align: right;">3103 ms</td>
+</tr>
+<tr class="even">
+<td>page, median</td>
+<td style="text-align: right;">7588 ms</td>
+</tr>
+<tr class="odd">
+<td>detector graph ready</td>
+<td style="text-align: right;">0.77 s</td>
+</tr>
+<tr class="even">
+<td>recognizer graph ready</td>
+<td style="text-align: right;">0.31 s</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Tier Page Date of Hearing Symbols ber Q V 9k/23 1 Simpson  Client Name In:2:30 Motion to suppressReaning Description - Attend Out:4:17 -ME -Client (HS) - Prosecttor (LH) ↑ Time Note - Officer Wiggum (aw)—Judge Synder [Tier I Level) for Billable . Direct CW [Tier 2 Level] Hoors - Backgound STIP: Training and expevence - supervisor [Tier 3 Level] →Day Shift → Review reports →Conduct officer discipline hearings - Date in question → came in despite being sick ★ [Tier 4 Level] &gt; Recent concussion Impact &gt; Diagnosed Memory? Limited activity mote from doctor 个 Desk duty: revier day shift report Question → Reviewed reports for Hs case Note - Hs case review → Checked body can →checked cellebrite report → Diicussion of report OBJECTION: Relevance and Hearsay [Sustained I ↑ 个 Grounds Objection Legal Note Outcome</code></pre>
+</div>
+</div>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp("https:\/\/alix559\.github\.io\/solid_lens");
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/alix559/solid_lens/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
