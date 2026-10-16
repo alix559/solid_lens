@@ -75,11 +75,14 @@ def compile_detector(
     )
 
 
-# %% ../nbs/12_model.ipynb #84d4b2b3f92a
-def compile_recognizer(cache_dir: Path | None = None):
+# %% ../nbs/12_model.ipynb #ff66a19efd2b
+def compile_recognizer(
+    cache_dir: Path | None = None,
+    checkpoint: Path | None = None, # ONNX or `.npz` weights. Defaults to the official ONNX.
+):
     config = RecognizerConfig()
     module = PPOCRV6Recognizer(config)
-    load_checkpoint(module, ROOT / "models" / "medium_rec.onnx")
+    load_checkpoint(module, checkpoint or ROOT / "models" / "medium_rec.onnx")
     return _compile(
         module,
         [1, 3, config.image_height, config.image_width],

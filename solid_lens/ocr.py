@@ -18,7 +18,7 @@ from .core import repo_root
 # %% auto #0
 __all__ = ['ROOT', 'DET_LIMIT_SIDE_LEN', 'DET_LIMIT_TYPE', 'DET_MAX_SIDE_LIMIT', 'DET_THRESH', 'DET_BOX_THRESH',
            'DET_UNCLIP_RATIO', 'DET_MAX_CANDIDATES', 'DET_MIN_SIZE', 'DET_MEAN', 'DET_STD', 'detection_hw',
-           'load_charset', 'load_image', 'resize_hwc', 'det_input', 'boxes_from_bitmap', 'recognize_crop',
+           'load_charset', 'load_image', 'resize_hwc', 'det_input', 'boxes_from_bitmap', 'rec_input', 'recognize_crop',
            'detect_boxes', 'read_page', 'draw_boxes', 'save_rgb', 'main']
 
 # %% ../nbs/13_ocr.ipynb #cc245abb1da2
@@ -223,19 +223,25 @@ def boxes_from_bitmap(
     return boxes
 
 
-# %% ../nbs/13_ocr.ipynb #0c31cd22bd35
-def _recognize_ids(model, image_rgb: np.ndarray) -> list[int]:
-    "Run one crop that already fits the 320-wide recognizer."
+# %% ../nbs/13_ocr.ipynb #bec82e1c7995
+def rec_input(image_rgb: np.ndarray) -> tuple[np.ndarray, int]:
+    "One crop as a 3x48x320 float32 tensor, and the width the crop fills."
     height, width = image_rgb.shape[:2]
     resized_w = int(np.ceil(48 * width / height))
     resized_w = max(8, min(320, resized_w))
     resized = resize_hwc(image_rgb, 48, resized_w).astype(np.float32)
     bgr = resized[:, :, ::-1]
     normalized = np.transpose((bgr / 255.0 - 0.5) / 0.5, (2, 0, 1))
-    tensor = np.zeros((1, 3, 48, 320), np.float32)
-    tensor[0, :, :, :resized_w] = normalized
-    tensor = np.ascontiguousarray(tensor)
-    probs = model.execute(tensor)[0].to_numpy()[0]
+    tensor = np.zeros((3, 48, 320), np.float32)
+    tensor[:, :, :resized_w] = normalized
+    return np.ascontiguousarray(tensor), resized_w
+
+
+# %% ../nbs/13_ocr.ipynb #a7f7fb238184
+def _recognize_ids(model, image_rgb: np.ndarray) -> list[int]:
+    "Run one crop that already fits the 320-wide recognizer."
+    tensor, resized_w = rec_input(image_rgb)
+    probs = model.execute(tensor[None])[0].to_numpy()[0]
     # The recognizer downsamples width by 8, so padding past resized_w is blank.
     valid = max(1, resized_w // 8)
     return [int(index) for index in probs.argmax(axis=-1)[:valid]]

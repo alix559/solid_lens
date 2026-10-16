@@ -44,6 +44,23 @@ pixi run serve
 
 `POST` one or more files to `/ocr` as `images` or `image`. Each result has the file name and a list of fragments: `text`, `norm`, `score`, and `box`.
 
+## Fine-tune the recognizer
+
+MAX runs the model but cannot train it. Training uses a PyTorch copy of the recognizer, `torch_rec`, under a [fastai](https://docs.fast.ai) `Learner`, in a separate pixi environment:
+
+``` sh
+pixi install -e train
+pixi run -e train train-rec path/to/labels.txt --epochs 5
+```
+
+The label file is PaddleOCR’s recognition format: an image path, a tab, and the line’s text, one per line. Paths are relative to the label file. Training starts from the official checkpoint and writes `models/rec_finetuned.npz`. Load it into MAX in place of the ONNX file:
+
+``` python
+recognizer = compile_recognizer(checkpoint=root/"models"/"rec_finetuned.npz")
+```
+
+The 18710-way CTC head is fixed, so lines may only use characters from the PP-OCRv6 dictionary. Lines outside it, or too long for the recognizer’s 40 timesteps, are dropped and counted. Training on CPU is slow; use a GPU for real runs.
+
 ## Develop
 
 Edit the notebooks. The modules under `solid_lens/` are generated, and each one names the notebook to change.
@@ -53,6 +70,6 @@ nbdev-export
 nbdev-test
 ```
 
-`nbdev-test` runs the lessons that do not need MAX. `nbdev-test --flags notest` also executes the cells that build graphs, which needs the pixi environment.
+`nbdev-test` runs the lessons that do not need MAX. `nbdev-test --flags notest` also executes the cells that build graphs, which needs the pixi environment. `pixi run -e train nbdev-test-train` runs the two training notebooks, which need PyTorch and compile a MAX graph.
 
-The reading order follows a forward pass. `config` is the architecture. `onnx` reads a checkpoint. The layer notebooks are the blocks `max.nn` does not ship. `detector` and `recognizer` stack them, `weights` binds the checkpoint, `model` compiles, and `ocr` is the page pipeline.
+The reading order follows a forward pass. `config` is the architecture. `onnx` reads a checkpoint. The layer notebooks are the blocks `max.nn` does not ship. `detector` and `recognizer` stack them, `weights` binds the checkpoint, `model` compiles, and `ocr` is the page pipeline. `torch_rec` and `train` are the training side.

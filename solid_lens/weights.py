@@ -15,7 +15,7 @@ from .onnx import Graph, Node, load
 
 
 # %% auto #0
-__all__ = ['arrays_from_graph', 'checkpoint_arrays', 'load_checkpoint']
+__all__ = ['arrays_from_graph', 'save_arrays', 'read_arrays', 'checkpoint_arrays', 'load_checkpoint']
 
 # %% ../nbs/11_weights.ipynb #e18b3cafc645
 def _skip_identity(nodes: list[Node], index: int) -> int:
@@ -93,9 +93,24 @@ def arrays_from_graph(graph: Graph) -> list[np.ndarray]:
     return arrays
 
 
-# %% ../nbs/11_weights.ipynb #1e813a5557f5
+# %% ../nbs/11_weights.ipynb #28d33d5754d2
+def save_arrays(arrays: list[np.ndarray], path: Path) -> None:
+    "Write learned tensors, in module state-dict order, to an `.npz`."
+    np.savez(path, **{f"{index:04d}": array for index, array in enumerate(arrays)})
+
+
+# %% ../nbs/11_weights.ipynb #b0330e40ee84
+def read_arrays(path: Path) -> list[np.ndarray]:
+    "Read tensors written by `save_arrays`, in their original order."
+    with np.load(path) as data:
+        return [np.ascontiguousarray(data[key], dtype=np.float32) for key in sorted(data.files)]
+
+
+# %% ../nbs/11_weights.ipynb #4567bf452b24
 def checkpoint_arrays(path: Path) -> list[np.ndarray]:
-    "Learned tensors in an ONNX checkpoint, in module state-dict order."
+    "Learned tensors in an ONNX or `.npz` checkpoint, in module state-dict order."
+    if path.suffix == ".npz":
+        return read_arrays(path)
     return arrays_from_graph(load(path))
 
 

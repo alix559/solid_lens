@@ -19,3 +19,5 @@ website:
       - 14_download.ipynb
       - 15_server.ipynb
       - 16_handwriting.ipynb
+      - 17_torch_rec.ipynb
+      - 18_train.ipynb

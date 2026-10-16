@@ -25,3 +25,19 @@ py-opencv = ">=5.0.0,<6"
 
 [pypi-dependencies]
 solid_lens = { path = ".", editable = true }
+
+[feature.train.dependencies]
+pytorch = ">=2.5"
+torchvision = "*"
+
+# fastai 2.8.7 on conda-forge calls `L.starmap`, which fastcore 2 removed. 2.8.12 does not.
+[feature.train.pypi-dependencies]
+fastai = ">=2.8.12"
+
+[feature.train.tasks]
+train-rec = { cmd = "python -m solid_lens.train", description = "Fine-tune the PP-OCRv6 recognizer with fastai" }
+nbdev-test-train = { cmd = "nbdev-test nbs --file-glob '1[78]_*.ipynb' --flags notest", description = "Run the PyTorch and fastai lessons, including the MAX parity checks" }
+
+[environments]
+default = { solve-group = "default" }
+train = { features = ["train"], solve-group = "default" }
